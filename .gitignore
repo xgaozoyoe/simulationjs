@@ -1,0 +1,38 @@
+#
+# @TAG(HUAWEI)
+#
+
+# generated python bytecode
+**.pyc
+
+# latex generated files
+**.log
+**.out
+**.o
+**.cmi
+**.cmx
+
+tags
+
+# csscope
+cscope.*
+ncscope.*
+
+# GNU GLOBAL tags
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+
+# patch file
+*.patch
+
+# Emacs backups
+*~
+
+# vim backups
+**.swp
+**.bak
+
+# make result folders
+build/
