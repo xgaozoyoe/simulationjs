@@ -4,7 +4,7 @@ type location_t = {
 };;
 
 type world_t = {
-	map : (area_t list) list;
+	map : (area_t array) array;
 	agents : agent_t list;
 	events : event_t list;
 }
@@ -89,26 +89,31 @@ let make_area loc = {
 };; 
 
 let make_world () = 
-	let map = [||] in
-	for y = 0 to 10 do
-		map.(y) <- [];
-		for x = 0 to 10 do
-			map.(y).(x) <- make_area (make_loc x y);
-		done;
-	done;
-	map;;
+	let map = 
+		Array.init 10 (fun y ->
+			Array.init 10 (fun x->
+				make_area (make_loc x y)
+			)
+		) in
+	{ map = map; agents = []; events = [] };;
 
-let make_agent name loc area_ref = {
-	name_of_agent = "Adam";
+let make_agent name loc world = {
+	name_of_agent = name;
 	vision_of_agent = trivial_vision;
 	loc_of_agent = loc;
-	area_of_agent_p = area_ref
+	area_of_agent_p = ref (world.map.(loc.pos_x).(loc.pos_y))
 };;
 
-let ability_array :ability_t array = [|Stay; Idle; Move; Stall|] in
+let ability_array :ability_t array = [|Stay; Idle; Move; Stall|];;
 
-let step (i:int) = Ability.dump_ability (Array.get ability_array (i mod 4))  in
+let new_world = make_world ();;
 
-for i = 1 to 1000 do
+Printf.sprintf ("%d") (Array.length new_world.map) |> print_endline;;
+
+let new_agent = make_agent "Adam" (make_loc 5 5) new_world;;
+
+let step (i:int) = Ability.invoke_ability (Array.get ability_array (i mod 4)) new_agent in
+
+for i = 1 to 100 do
 	step i
 done
