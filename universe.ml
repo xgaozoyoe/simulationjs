@@ -1,3 +1,12 @@
+module type Estimation = sig
+	type state_t 
+	type action_t
+	type estimate_t
+	val get_estimate : estimate_t -> state_t -> action_t -> int
+	val update_estimate: estimate_t -> estimate_t 
+	val pick_policy : estimate_t -> state_t -> action_t
+end
+
 type location_t = {
 	pos_x: int;
 	pos_y: int;
@@ -25,6 +34,9 @@ and agent_t = {
 	vision_of_agent : vision_t;
 	loc_of_agent : location_t;
 	area_of_agent_p : area_t ref;
+	(*
+	reward_estimate : estimate_t;
+	*)
 }
 
 and turf_t = {
