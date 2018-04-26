@@ -1,11 +1,41 @@
+(****
+ * The generic definition of Q matrix in discerete model 
+ * estimate_t is usually a map from statet_t * action_t to int
+ ****)
+
 module type Estimation = sig
 	type state_t 
 	type action_t
 	type estimate_t
 	val get_estimate : estimate_t -> state_t -> action_t -> int
-	val update_estimate: estimate_t -> estimate_t 
+	val update_estimate : estimate_t -> estimate_t 
+	val actions_of_state : state_t -> action_t
 	val pick_policy : estimate_t -> state_t -> action_t
 end
+
+(**** 
+ * The location based estimate is the simplest estimate that evaluates the Q value based 
+ * the location_t. 
+ ****)
+
+type loc_state_estimate_t = Map.Make(loc).t
+
+
+(****
+ * Standard Q learning with no adjustment of the estimate
+ ****)
+
+module Qleaning : Sig
+	type state_t;
+	type action_t;
+	type rewards_t : state_t -> action_t -> int
+	val crunch_estimation_matrix : estimation_t -> location_t -> location_t -> estimation_t
+	val initialize_estimation_matrix : estimation_t -> location_t -> world_t -> estimation_t
+	val update_estimation : estimation_t -> rewards_t -> estimation_t
+end = struct
+	(* Compute the estimation matrix Q(state, action) *)
+	let update_estimation last_est rewards = last_est
+end;;
 
 type location_t = {
 	pos_x: int;
@@ -34,9 +64,7 @@ and agent_t = {
 	vision_of_agent : vision_t;
 	loc_of_agent : location_t;
 	area_of_agent_p : area_t ref;
-	(*
-	reward_estimate : estimate_t;
-	*)
+	estimate_of_agent : Qlearning ;
 }
 
 and turf_t = {
@@ -124,7 +152,15 @@ Printf.sprintf ("%d") (Array.length new_world.map) |> print_endline;;
 
 let new_agent = make_agent "Adam" (make_loc 5 5) new_world;;
 
-let step (i:int) = Ability.invoke_ability (Array.get ability_array (i mod 4)) new_agent in
+(* Pick the best action based on the estimation of the agent *)
+let pick_ability agent = 
+	let current_est = estimation_matrix_of agent in
+	let loc = loc_of_agent agent in
+	let actions = current_est loc in
+	let action = maximal_action actions in
+	action
+
+let step (i:int) = Ability.invoke_ability (pick_ability new_agent) in
 
 for i = 1 to 100 do
 	step i
