@@ -7,7 +7,10 @@ module type Estimation = sig
 	type state_t 
 	type action_t
 	type estimate_t
+
+	(* return the result value of a certain action *)
 	val get_estimate : estimate_t -> state_t -> action_t -> int
+
 	val update_estimate : estimate_t -> estimate_t 
 	val actions_of_state : state_t -> action_t
 	val pick_policy : estimate_t -> state_t -> action_t
@@ -18,8 +21,10 @@ end
  * the location_t. 
  ****)
 
-type loc_state_estimate_t = Map.Make(loc).t
-
+type location_t = {
+	pos_x: int;
+	pos_y: int;
+};;
 
 (****
  * Standard Q learning with no adjustment of the estimate
@@ -27,20 +32,22 @@ type loc_state_estimate_t = Map.Make(loc).t
 
 module Qleaning : Sig
 	type state_t;
-	type action_t;
-	type rewards_t : state_t -> action_t -> int
-	val crunch_estimation_matrix : estimation_t -> location_t -> location_t -> estimation_t
-	val initialize_estimation_matrix : estimation_t -> location_t -> world_t -> estimation_t
-	val update_estimation : estimation_t -> rewards_t -> estimation_t
-end = struct
-	(* Compute the estimation matrix Q(state, action) *)
-	let update_estimation last_est rewards = last_est
-end;;
+	type action_t : location_t -> location_t
+	type loc_estimate_t : (int list) list
+	type award_t : location_t -> location_t
+	type available_action_t : location_t -> action_t list
 
-type location_t = {
-	pos_x: int;
-	pos_y: int;
-};;
+end = struct
+
+	(* Compute the estimation matrix Q(state, action) *)
+	let get_estimate loc_estimate location action = 
+		let loc = action location in  
+		loc_estimate.(loc.pos_x).(loc.pos_y) 
+
+	let update_estimate loc_estimate_pre rewards avail_action_fn = last_est
+		let update loc = Max (map (get_estimate loc_estimate_pre loc) (avail_action_fn loc)) in
+		map (fun x -> map (fun y -> update {pos_x = x; pos_y = y} ) map.(x)) map 
+end;;
 
 type world_t = {
 	map : (area_t array) array;
