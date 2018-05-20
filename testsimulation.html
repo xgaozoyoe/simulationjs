@@ -52,7 +52,7 @@ function map(width, height) {
 	this.resource = new Array();
 	for (var i=0; i<width; i++) {
 		for (var j=0; j<height; j++) {
-			this.resource[j * width + i] = new tile({x:j, y:i}, 0);	
+			this.resource[j * width + i] = new tile({x:i, y:j}, 0);	
 		}
 	}
 	this.set_tile_resource = function(x, y, v){
@@ -63,6 +63,7 @@ function map(width, height) {
 	}
 
 	this.regenerate = function(){
+        return;
 		for (var i=0; i<width; i++) {
 			for (var j=0; j<height; j++) {
 				if (this.resource[j * width + i].res == 0){
@@ -76,6 +77,11 @@ function map(width, height) {
 
 var t = new map(1,1);
 
+var Action = function(name, act, attempt){
+    this.name = name;
+    this.do = act;
+    this.attempt = attempt;
+}
 /* Standard movement action functor */
 var move = function(direction) {
     var fn = function (loc) {
@@ -89,11 +95,28 @@ var move = function(direction) {
 	return fn;
 }
 
+var try_move = function(direction) {
+    var fn = function (loc) {
+		var attempt_loc = direction(loc);
+		if (loc.map.offset(attempt_loc, 0, 0) != null) {
+			return attempt_loc;
+		} else {
+			null;
+		}
+	}
+	return fn;
+}
+
+function _left(loc) {return new coordinate(loc.x-1, loc.y, loc.map);} 
+function _right(loc) {return new coordinate(loc.x+1, loc.y, loc.map);} 
+function _top(loc) {return new coordinate(loc.x, loc.y-1, loc.map);} 
+function _bottom(loc) {return new coordinate(loc.x, loc.y+1, loc.map);} 
+
 /* For general actions an agent can take */
-var move_left = move( function(loc) {return new coordinate(loc.x-1, loc.y, loc.map);} );
-var move_right = move( function(loc) {return new coordinate(loc.x+1, loc.y, loc.map);} );
-var move_top = move( function(loc) {return new coordinate(loc.x, loc.y-1, loc.map);} );
-var move_bottom = move( function(loc) {return new coordinate(loc.x, loc.y+1, loc.map);} );
+var move_left =  new Action("MLeft", move(_left), try_move(_left));
+var move_right = new Action("MRight", move(_right), try_move(_right));
+var move_top = new Action("MTop", move(_top), try_move(_top));
+var move_bottom = new Action("MBottom", move(_bottom), try_move(_bottom));
 
 var actions = [move_left, move_right, move_top, move_bottom];
 
@@ -163,6 +186,8 @@ var Matrix2D = function(width, height){
 		}
 	}
 }
+
+var MIN_MOVE_GAP = 20;
 /*  
  *  loc: coordinate, 
  *  map: map,
@@ -172,8 +197,8 @@ var agent = function (loc, map, d, lambda, speed) {
 
 	// FIXME: pos_x and pos_y are rendering attributes, please move
 	this.update = function() {
-		this.pos_x = this.loc.x * 10;
-		this.pos_y = this.loc.y * 10;
+		this.pos_x = this.loc.x * MIN_MOVE_GAP;
+		this.pos_y = this.loc.y * MIN_MOVE_GAP;
 		this.mark = this.map.get_tile_resource(this.loc.x, this.loc.y).res;
 		this.map.set_tile_resource(this.loc.x, this.loc.y,0);
 	}	
@@ -214,7 +239,7 @@ var agent = function (loc, map, d, lambda, speed) {
 		var max = -1; 
 		var aid = -1;
 		for (var i=0; i<this.actions.length; i++) {
-			var result_loc = this.actions[i](loc);
+			var result_loc = this.actions[i].attempt(loc);
 			if (result_loc != null) {
 				var c = this.estimate(i, loc);
 				if (c > max) {
@@ -234,7 +259,10 @@ var agent = function (loc, map, d, lambda, speed) {
 					if (source_loc == null) {
 						this.view[i].coordinate_set(offset_x,offset_y,0);
 					} else {
-						var result_loc = this.map.offset(this.actions[i](source_loc),0,0);
+                        var result_loc = this.actions[i].attempt(source_loc);
+                        if (result_loc) {
+						    result_loc = this.map.offset(result_loc,0,0);
+                        }
 						if (result_loc == null) { // An invalid action
 							this.view[i].coordinate_set(offset_x,offset_y,0);
 						} else {
@@ -244,11 +272,12 @@ var agent = function (loc, map, d, lambda, speed) {
 							}
 							var aid = this.policy(result_loc);
 							if (aid >=0 ) {
-								var potential_estimate = this.estimate(aid, this.actions[aid](result_loc));
+								var potential_estimate = this.estimate(aid, this.actions[aid].attempt(result_loc));
 								if(isNaN(potential_estimate)) {
-									return this.estimate(aid, this.actions[aid](result_loc));
+									return this.estimate(aid, this.actions[aid].attempt(result_loc));
 								}
-								this.view[i].coordinate_set(offset_x,offset_y,this.view[i].coordinate(offset_x, offset_y) + potential_estimate);
+								this.view[i].coordinate_set(offset_x,offset_y,this.view[i].coordinate(offset_x,
+                                offset_y) + 0.5 * potential_estimate);
 							}
 						}
 					}
@@ -265,7 +294,7 @@ var agent = function (loc, map, d, lambda, speed) {
 	this.step = function() {
 		if (this.slice <= 0) {
 			var aid = this.policy(this.loc);
-			var loc = this.actions[aid](this.loc);
+			var loc = this.actions[aid].do(this.loc);
 			for(var i=0;i<this.actions.length;i++){
 				this.view[i].coordinate_shift(loc.x - this.loc.x, loc.y - this.loc.y);
 			}
@@ -297,8 +326,10 @@ var gen_agents = function (map, num) {
 	var agents = [];
 	var i = 0;
 	for (var i = 0; i<num; i++) {
-		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
-		agents[i] = new agent(pos, map, 2, 0.8, rand_integer(10));
+		//var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
+        var pos = new coordinate(0,0,map);
+		//agents[i] = new agent(pos, map, 2, 0.8, rand_integer(10));
+		agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
 	return agents;
 }
@@ -309,7 +340,7 @@ var gen_agents = function (map, num) {
 var app = angular.module('myApp', []);
 
 // Create a map of 20 * 20
-var map = gen_map(50,50);
+var map = gen_map(10,10);
 
 
 var total_agents = 1;
@@ -355,7 +386,7 @@ app.controller('ctrl', function($scope,$interval) {
   		<button ng-click="start()">play</button>
 		<button ng-click="end()">end</button>
 		<div ng-repeat="a in focus.view">
-			<h4>action estimate</h4>
+			<h4>action {{focus.actions[$index].name}}</h4>
 			<div ng-repeat="x in a.data">
 
 			<p>{{x[0]}},{{x[1]}},{{x[2]}},{{x[3]}},{{x[4]}}</p>
@@ -364,22 +395,23 @@ app.controller('ctrl', function($scope,$interval) {
 	</div>
   	<div ng-repeat="tile in map.resource"
 	   style="position:fixed;
-			  left:{{tile.loc.x * 10}}px;
-			  top:{{tile.loc.y * 10}}px;
+			  left:{{tile.loc.x * 20}}px;
+			  top:{{tile.loc.y * 20}}px;
 			  display:blocked;
-			  width:10px;
-			  height:10px;background-color:#{{gen_gray_color(tile.res)}}">
+			  width:20px;
+			  height:20px;background-color:#{{gen_gray_color(tile.res)}}">
+              {{tile.res}}
 	</div>
 
   	<div ng-repeat="agent in agents"
 	   ng-click="focus_agent(agent)"
 	   style="position:fixed;
-			  top:{{agent.pos_x}}px;
-			  left:{{agent.pos_y}}px;
+			  top:{{agent.pos_y}}px;
+			  left:{{agent.pos_x}}px;
 			  display:blocked;
 			  width:{{agent.size}}px;
 			  height:{{agent.size}}px;border:1px dotted black;
-			  background-color:#{{gen_gray_color(agent.mark)}}">
+			  ">
 	</div>
 
 </div>
