@@ -33,6 +33,17 @@ function coordinate(x, y, map) {
 function tile(loc, res) {
 	this.loc = loc;
 	this.res = res;
+	this.reg = 0;
+	this.regen_rate = 10;
+	this.slice = 0;
+	this.regenerate = function(){
+		if (this.slice == this.reg_rate){
+			this.slice = 0;
+			this.res += this.reg;
+		}else{
+			this.slice += 1;
+		}
+	}
 }
 
 function map(width, height) {
@@ -52,7 +63,9 @@ function map(width, height) {
 	this.resource = new Array();
 	for (var i=0; i<width; i++) {
 		for (var j=0; j<height; j++) {
-			this.resource[j * width + i] = new tile({x:i, y:j}, 0);	
+			this.resource[j * width + i] = new tile({x:i, y:j}, 0);
+			this.resource[j * width + i].reg = rand_integer(5);
+			this.resource[j * width + i].reg_rate = rand_integer(10)+30;
 		}
 	}
 	this.set_tile_resource = function(x, y, v){
@@ -63,12 +76,9 @@ function map(width, height) {
 	}
 
 	this.regenerate = function(){
-        return;
 		for (var i=0; i<width; i++) {
 			for (var j=0; j<height; j++) {
-				if (this.resource[j * width + i].res == 0){
-					this.resource[j * width + i].res += rand_integer(6);	
-				}
+					this.resource[j * width + i].regenerate();
 			}
 		}
 
@@ -187,25 +197,44 @@ var Matrix2D = function(width, height){
 	}
 }
 
+var world = {agents:null, death:null}
+function global_env(){
+	return world;
+}
+world.die = function(agent){
+	for (var i = 0; i<this.agents.length; i++){
+		if(this.agents[i] == agent) {
+			this.agents.splice(i,1);
+		}
+	}
+	this.death.push(agent);
+}
 var MIN_MOVE_GAP = 20;
 /*  
  *  loc: coordinate, 
  *  map: map,
  *  d: int <= distance of the view
  */
-var agent = function (loc, map, d, lambda, speed) {
+var agent = function (id, loc, map, d, lambda, speed) {
+	this.mark = 0;
+	this.id = id;
 
 	// FIXME: pos_x and pos_y are rendering attributes, please move
 	this.update = function() {
-		this.pos_x = this.loc.x * MIN_MOVE_GAP;
-		this.pos_y = this.loc.y * MIN_MOVE_GAP;
-		this.mark = this.map.get_tile_resource(this.loc.x, this.loc.y).res;
+		this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
+		this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
+		this.mark += this.map.get_tile_resource(this.loc.x, this.loc.y).res;
 		this.map.set_tile_resource(this.loc.x, this.loc.y,0);
+		this.size = this.mark/5+10;
+		this.mark = Math.floor(this.mark * 0.9);
+		if (this.mark == 0 ){
+			global_env().die(this);
+		}
 	}	
 
 	this.speed = speed;
 
-	this.size = 30-speed * 2;
+	this.size = 10;
 
 
 	// Main attributes of the agent
@@ -277,7 +306,7 @@ var agent = function (loc, map, d, lambda, speed) {
 									return this.estimate(aid, this.actions[aid].attempt(result_loc));
 								}
 								this.view[i].coordinate_set(offset_x,offset_y,this.view[i].coordinate(offset_x,
-                                offset_y) + 0.5 * potential_estimate);
+                                offset_y) + Math.floor(0.5 * potential_estimate));
 							}
 						}
 					}
@@ -306,7 +335,6 @@ var agent = function (loc, map, d, lambda, speed) {
 			this.slice = this.slice - this.speed;
 		}
 	}
-	this.update();
 	this.learn();
 	this.slice = 20;
 }
@@ -326,10 +354,10 @@ var gen_agents = function (map, num) {
 	var agents = [];
 	var i = 0;
 	for (var i = 0; i<num; i++) {
-		//var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
-        var pos = new coordinate(0,0,map);
-		//agents[i] = new agent(pos, map, 2, 0.8, rand_integer(10));
-		agents[i] = new agent(pos, map, 2, 0.8, 10);
+		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
+        //var pos = new coordinate(0,0,map);
+		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10));
+		//agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
 	return agents;
 }
@@ -340,24 +368,29 @@ var gen_agents = function (map, num) {
 var app = angular.module('myApp', []);
 
 // Create a map of 20 * 20
-var map = gen_map(10,10);
+var map = gen_map(30,30);
 
 
-var total_agents = 1;
+var total_agents = 20;
 // Create 10 agents distributed randomly
 var agents = gen_agents(map, total_agents);
-
+var corpses = new Array();
+world.death = corpses;
 var step = function() {
-	for(var i=0; i<total_agents; i++) {
+	map.regenerate();
+	
+	for(var i=0; i<agents.length; i++) {
 		agents[i].step();
 	}
-	map.regenerate();
+
 }
 var clear;
 
+world.agents = agents;
 app.controller('ctrl', function($scope,$interval) {
 	$scope.map = map;
     $scope.agents = agents;
+	$scope.death = corpses;
 	$scope.focus = agents[0];
 	$scope.focus_agent = function(f){
 		$scope.focus = f;
@@ -381,8 +414,11 @@ app.controller('ctrl', function($scope,$interval) {
 
 <div ng-app="myApp" ng-controller="ctrl">
 	<div style="float:right">
-  		<p>{{focus.pos_x}}</p>
-  		<p>{{focus.pos_y}}</p>
+  		<p>X: {{focus.pos_x}}</p>
+  		<p>Y:{{focus.pos_y}}</p>
+		<p>speed: {{focus.speed}}</p>
+		<p>wait: {{focus.slice}}</p>
+		<p>mark: {{focus.mark}}</p>
   		<button ng-click="start()">play</button>
 		<button ng-click="end()">end</button>
 		<div ng-repeat="a in focus.view">
@@ -398,7 +434,7 @@ app.controller('ctrl', function($scope,$interval) {
 			  left:{{tile.loc.x * 20}}px;
 			  top:{{tile.loc.y * 20}}px;
 			  display:blocked;
-			  width:20px;
+			  width:20px;text-align:center;
 			  height:20px;background-color:#{{gen_gray_color(tile.res)}}">
               {{tile.res}}
 	</div>
@@ -408,10 +444,15 @@ app.controller('ctrl', function($scope,$interval) {
 	   style="position:fixed;
 			  top:{{agent.pos_y}}px;
 			  left:{{agent.pos_x}}px;
-			  display:blocked;
+			  display:blocked; text-align:center;
 			  width:{{agent.size}}px;
-			  height:{{agent.size}}px;border:1px dotted black;
+			  height:{{agent.size}}px;border:2px solid black;
 			  ">
+	</div>
+	<div style="border:1px solid gray; height:30px;float:right;margin-right:10px;">
+		<ul>
+		<li ng-repeat="agent in death"> agent.id </li>
+		</ul>
 	</div>
 
 </div>
