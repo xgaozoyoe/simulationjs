@@ -209,6 +209,9 @@ world.die = function(agent){
 	}
 	this.death.push(agent);
 }
+world.birth = function(agent){
+    this.agents.push(agent);
+}
 var MIN_MOVE_GAP = 20;
 /*  
  *  loc: coordinate, 
@@ -219,6 +222,7 @@ var agent = function (id, loc, map, d, lambda, speed) {
 	this.mark = 0;
 	this.id = id;
 
+
 	// FIXME: pos_x and pos_y are rendering attributes, please move
 	this.update = function() {
 		this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
@@ -226,11 +230,30 @@ var agent = function (id, loc, map, d, lambda, speed) {
 		this.mark += this.map.get_tile_resource(this.loc.x, this.loc.y).res;
 		this.map.set_tile_resource(this.loc.x, this.loc.y,0);
 		this.size = this.mark/5+10;
-		this.mark = Math.floor(this.mark * 0.9);
-		if (this.mark == 0 ){
+		if (this.mark <= 0 ){
 			global_env().die(this);
-		}
+		} else if (this.mark > 100) {
+            var birth = null;
+            birth = new agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed);
+            birth.loc = this.map.offset(birth.loc,-1,-1);
+            if (birth.loc) {
+                birth.mark = 20;
+                global_env().birth(birth);
+            }
+            birth = new agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed);
+            birth.loc = this.map.offset(birth.loc,+1,+1);
+            if (birth.loc) {
+                birth.mark = 20;
+                global_env().birth(birth);
+            }
+            this.mark = 70;
+        }
+
+        
 	}	
+    this.survive = function() {
+		this.mark = this.mark - 1;
+    }
 
 	this.speed = speed;
 
@@ -333,8 +356,12 @@ var agent = function (id, loc, map, d, lambda, speed) {
 			this.slice = 20;
 		} else {
 			this.slice = this.slice - this.speed;
+            this.survive();
 		}
 	}
+
+	this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
+	this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
 	this.learn();
 	this.slice = 20;
 }
@@ -356,7 +383,7 @@ var gen_agents = function (map, num) {
 	for (var i = 0; i<num; i++) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
         //var pos = new coordinate(0,0,map);
-		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10));
+		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10)+1);
 		//agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
 	return agents;
@@ -371,7 +398,7 @@ var app = angular.module('myApp', []);
 var map = gen_map(30,30);
 
 
-var total_agents = 20;
+var total_agents = 10;
 // Create 10 agents distributed randomly
 var agents = gen_agents(map, total_agents);
 var corpses = new Array();
@@ -449,11 +476,19 @@ app.controller('ctrl', function($scope,$interval) {
 			  height:{{agent.size}}px;border:2px solid black;
 			  ">
 	</div>
-	<div style="border:1px solid gray; height:30px;float:right;margin-right:10px;">
+	<div style="width:200px;display:block;float:right;margin-right:10px;">
+        <h4>active list {{agents.length}}</h4>
 		<ul>
-		<li ng-repeat="agent in death"> agent.id </li>
+		<li ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.speed}} </li>
 		</ul>
 	</div>
+	<div style="width:200px;display:block;float:right;margin-right:10px;">
+        <h4>dead list</h4>
+		<ul>
+		<li ng-repeat="agent in death">agent id: {{agent.id}} </li>
+		</ul>
+	</div>
+
 
 </div>
 </body>
