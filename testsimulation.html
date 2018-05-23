@@ -2,6 +2,12 @@
 <html>
 <head>
 <meta charset="utf-8">
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
 <script src="http://cdn.static.runoob.com/libs/angular.js/1.4.6/angular.min.js"></script>
 </head>
 	
@@ -60,37 +66,47 @@ function map(width, height) {
 		}
 		return new_loc;
 	}
-	this.resource = new Array();
+	this.tiles = new Array();
 	for (var i=0; i<width; i++) {
 		for (var j=0; j<height; j++) {
-			this.resource[j * width + i] = new tile({x:i, y:j}, 0);
-			this.resource[j * width + i].reg = rand_integer(5);
-			this.resource[j * width + i].reg_rate = rand_integer(10)+30;
+			this.tiles[j * width + i] = new tile({x:i, y:j}, 0);
+			this.tiles[j * width + i].reg = rand_integer(5);
+			this.tiles[j * width + i].reg_rate = rand_integer(10)+30;
 		}
 	}
 	this.set_tile_resource = function(x, y, v){
-		this.resource[y * width + x ].res = v;
+		this.tiles[y * width + x ].res = v;
 	}
 	this.get_tile_resource = function(x,y) {
-		return this.resource[y * width + x];
+		return this.tiles[y * width + x].res;
 	}
 
 	this.regenerate = function(){
 		for (var i=0; i<width; i++) {
 			for (var j=0; j<height; j++) {
-					this.resource[j * width + i].regenerate();
+					this.tiles[j * width + i].regenerate();
 			}
 		}
-
+	}
+	this.get_tile = function(x,y){
+		return this.tiles[y*width + x];
 	}
 }
 
 var t = new map(1,1);
 
-var Action = function(name, act, attempt){
+var Action = function(name, category, act, attempt){
     this.name = name;
+	this.category = category;
     this.do = act;
     this.attempt = attempt;
+}
+
+var ActionCategory = {
+	ACTION_MOVE:1,
+	ACTION_AFFEND:2,
+	ACTION_DEFEND:3,
+	ACTION_COLLECT:4
 }
 /* Standard movement action functor */
 var move = function(direction) {
@@ -117,27 +133,38 @@ var try_move = function(direction) {
 	return fn;
 }
 
+var stay = function(loc){
+	return loc;
+}
+
 function _left(loc) {return new coordinate(loc.x-1, loc.y, loc.map);} 
 function _right(loc) {return new coordinate(loc.x+1, loc.y, loc.map);} 
 function _top(loc) {return new coordinate(loc.x, loc.y-1, loc.map);} 
 function _bottom(loc) {return new coordinate(loc.x, loc.y+1, loc.map);} 
 
 /* For general actions an agent can take */
-var move_left =  new Action("MLeft", move(_left), try_move(_left));
-var move_right = new Action("MRight", move(_right), try_move(_right));
-var move_top = new Action("MTop", move(_top), try_move(_top));
-var move_bottom = new Action("MBottom", move(_bottom), try_move(_bottom));
+var move_left =  new Action("MLeft", ActionCategory.ACTION_MOVE, move(_left), try_move(_left));
+var move_right = new Action("MRight", ActionCategory.ACTION_MOVE, move(_right), try_move(_right));
+var move_top = new Action("MTop", ActionCategory.ACTION_MOVE, move(_top), try_move(_top));
+var move_bottom = new Action("MBottom", ActionCategory.ACTION_MOVE, move(_bottom), try_move(_bottom));
+var stay = new Action("MStay", ActionCategory.ACTION_COLLECT, stay, stay);
 
-var actions = [move_left, move_right, move_top, move_bottom];
+var actions = [stay, move_left, move_right, move_top, move_bottom];
 
 /* Provided an agent, create an array of actions */
 function generate_actions(agent) {
 	return actions;
 }
 
-var map_gain = function (map, loc) {
+var map_gain = function (map, loc, action) {
 	if (loc != null) {
-		return map.get_tile_resource(loc.x, loc.y).res;
+		if (action.category == ActionCategory.ACTION_MOVE) {
+			return 0;
+		}
+		if (action.category == ActionCategory.ACTION_COLLECT) {
+			return map.get_tile_resource(loc.x, loc.y);
+		}
+		console.error("unsupported action!");
 	} else {
 		return -1;
 	}
@@ -218,29 +245,30 @@ var MIN_MOVE_GAP = 20;
  *  map: map,
  *  d: int <= distance of the view
  */
-var agent = function (id, loc, map, d, lambda, speed) {
+var agent = function (id, loc, map, d, lambda, speed, itg) {
 	this.mark = 0;
 	this.id = id;
+	this.intelligence = itg;
 
 
 	// FIXME: pos_x and pos_y are rendering attributes, please move
 	this.update = function() {
 		this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
 		this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
-		this.mark += this.map.get_tile_resource(this.loc.x, this.loc.y).res;
+		this.mark += this.map.get_tile_resource(this.loc.x, this.loc.y);
 		this.map.set_tile_resource(this.loc.x, this.loc.y,0);
 		this.size = this.mark/5+10;
 		if (this.mark <= 0 ){
 			global_env().die(this);
 		} else if (this.mark > 100) {
             var birth = null;
-            birth = new agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed);
+            birth = new agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed, this.intelligence);
             birth.loc = this.map.offset(birth.loc,-1,-1);
             if (birth.loc) {
                 birth.mark = 20;
                 global_env().birth(birth);
             }
-            birth = new agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed);
+            birth = new agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed, this.intelligence);
             birth.loc = this.map.offset(birth.loc,+1,+1);
             if (birth.loc) {
                 birth.mark = 20;
@@ -291,19 +319,16 @@ var agent = function (id, loc, map, d, lambda, speed) {
 		var max = -1; 
 		var aid = -1;
 		for (var i=0; i<this.actions.length; i++) {
-			var result_loc = this.actions[i].attempt(loc);
-			if (result_loc != null) {
-				var c = this.estimate(i, loc);
-				if (c > max) {
-					max = c;
-					aid = i;
-				}
+			var c = this.estimate(i, loc);
+			if (c > max) {
+				max = c;
+				aid = i;
 			}
 		}
 		return aid;
 	}
 	this.learn = function () {
-		for(var i=0; i<actions.length; i++) {
+		for(var i=0; i<this.actions.length; i++) {
 			for (var offset_x = 0; offset_x < 2*this.view_distance + 1; offset_x ++) {
 				for (var offset_y = 0; offset_y <2*this.view_distance + 1; offset_y ++) {
 					/* Get the location on the map of the view point in the view */
@@ -318,15 +343,15 @@ var agent = function (id, loc, map, d, lambda, speed) {
 						if (result_loc == null) { // An invalid action
 							this.view[i].coordinate_set(offset_x,offset_y,0);
 						} else {
-							this.view[i].coordinate_set(offset_x,offset_y,map_gain(this.map, result_loc));
-							if(isNaN(map_gain(this.map, result_loc))) {
+							this.view[i].coordinate_set(offset_x,offset_y,map_gain(this.map, result_loc, this.actions[i]));
+							if(isNaN(map_gain(this.map, result_loc, this.actions[i]))) {
 								console.error("gain is not a number!");
 							}
 							var aid = this.policy(result_loc);
 							if (aid >=0 ) {
-								var potential_estimate = this.estimate(aid, this.actions[aid].attempt(result_loc));
+								var potential_estimate = this.estimate(aid, result_loc);
 								if(isNaN(potential_estimate)) {
-									return this.estimate(aid, this.actions[aid].attempt(result_loc));
+									console.error("potential estimation is NaN");
 								}
 								this.view[i].coordinate_set(offset_x,offset_y,this.view[i].coordinate(offset_x,
                                 offset_y) + Math.floor(0.5 * potential_estimate));
@@ -337,7 +362,7 @@ var agent = function (id, loc, map, d, lambda, speed) {
 			}
 		}
 	}
-	this.training = function(round) {
+	this.train = function(round) {
 		for (var i=0; i<round; i++) {
 			this.learn();
 		}
@@ -352,18 +377,20 @@ var agent = function (id, loc, map, d, lambda, speed) {
 			}
 			this.loc = loc;
 			this.update();	
-			this.learn();
+			this.train(this.intelligence);
 			this.slice = 20;
 		} else {
 			this.slice = this.slice - this.speed;
             this.survive();
 		}
 	}
-
-	this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
-	this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
 	this.learn();
 	this.slice = 20;
+	
+	/* some dumb code for rendering purpose, which should be moved out */
+	this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
+	this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
+
 }
 
 var gen_map = function (width, height) {
@@ -383,7 +410,7 @@ var gen_agents = function (map, num) {
 	for (var i = 0; i<num; i++) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
         //var pos = new coordinate(0,0,map);
-		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10)+1);
+		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10)+1, rand_integer(4)+1);
 		//agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
 	return agents;
@@ -429,6 +456,12 @@ app.controller('ctrl', function($scope,$interval) {
 	$scope.end = function(){
 		$interval.cancel(clear);
 	}
+	$scope.learn = function(){
+		$scope.focus.learn();
+	}
+	$scope.step = function(){
+		$scope.focus.step();
+	}
 	$scope.gen_gray_color = function gen_gray_color(val) {
 		var char = (0xff - val).toString(16);
 		return char + char + char;
@@ -436,18 +469,25 @@ app.controller('ctrl', function($scope,$interval) {
 });
 </script>
 <body>
-
+<header class="navbar navbar-static-top" style="border-bottom:1px solid gray">
+	<div class="container">
+		<h1>survive playground</h1>
+	</div>
+</header>
 
 
 <div ng-app="myApp" ng-controller="ctrl">
-	<div style="float:right">
+	<div class="col-md-2" >
+  		<button ng-click="start()">play</button>
+		<button ng-click="end()">end</button>
+		<button ng-click="learn()">learn</button>
+		<button ng-click="step()">step</button>	
   		<p>X: {{focus.pos_x}}</p>
   		<p>Y:{{focus.pos_y}}</p>
 		<p>speed: {{focus.speed}}</p>
 		<p>wait: {{focus.slice}}</p>
 		<p>mark: {{focus.mark}}</p>
-  		<button ng-click="start()">play</button>
-		<button ng-click="end()">end</button>
+		<p>intelligence: {{focus.intelligence}}</p>
 		<div ng-repeat="a in focus.view">
 			<h4>action {{focus.actions[$index].name}}</h4>
 			<div ng-repeat="x in a.data">
@@ -456,36 +496,38 @@ app.controller('ctrl', function($scope,$interval) {
 			</div>
 		</div>
 	</div>
-  	<div ng-repeat="tile in map.resource"
-	   style="position:fixed;
+	<div class="col-md-6">
+		<div ng-repeat="tile in map.tiles"
+			style="position:absolute;
 			  left:{{tile.loc.x * 20}}px;
 			  top:{{tile.loc.y * 20}}px;
 			  display:blocked;
 			  width:20px;text-align:center;
 			  height:20px;background-color:#{{gen_gray_color(tile.res)}}">
               {{tile.res}}
-	</div>
-
-  	<div ng-repeat="agent in agents"
-	   ng-click="focus_agent(agent)"
-	   style="position:fixed;
+		</div>
+	
+		<div ng-repeat="agent in agents"
+			ng-click="focus_agent(agent)"
+			style="position:absolute;
 			  top:{{agent.pos_y}}px;
 			  left:{{agent.pos_x}}px;
 			  display:blocked; text-align:center;
 			  width:{{agent.size}}px;
 			  height:{{agent.size}}px;border:2px solid black;
 			  ">
+		</div>
 	</div>
-	<div style="width:200px;display:block;float:right;margin-right:10px;">
+	<div class="col-md-2">
         <h4>active list {{agents.length}}</h4>
-		<ul>
-		<li ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.speed}} </li>
+		<ul class="list-inline">
+		<li ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
 		</ul>
 	</div>
-	<div style="width:200px;display:block;float:right;margin-right:10px;">
+	<div class="col-md-2">
         <h4>dead list</h4>
-		<ul>
-		<li ng-repeat="agent in death">agent id: {{agent.id}} </li>
+		<ul class="list-inline">
+		<li ng-repeat="agent in death">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
 		</ul>
 	</div>
 
