@@ -7,7 +7,8 @@
 
 <!-- Optional theme -->
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
-
+<script src="http://cdn.static.runoob.com/libs/jquery/2.1.1/jquery.min.js"></script>
+<script src="http://cdn.static.runoob.com/libs/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 <script src="http://cdn.static.runoob.com/libs/angular.js/1.4.6/angular.min.js"></script>
 </head>
 	
@@ -245,8 +246,8 @@ var MIN_MOVE_GAP = 20;
  *  map: map,
  *  d: int <= distance of the view
  */
-var agent = function (id, loc, map, d, lambda, speed, itg) {
-	this.mark = 0;
+var agent = function (id, loc, map, d, lambda, speed, itg, energy) {
+	this.mark = energy;
 	this.id = id;
 	this.intelligence = itg;
 
@@ -378,7 +379,7 @@ var agent = function (id, loc, map, d, lambda, speed, itg) {
 			this.loc = loc;
 			this.update();	
 			this.train(this.intelligence);
-			this.slice = 20;
+			this.slice = 60;
 		} else {
 			this.slice = this.slice - this.speed;
             this.survive();
@@ -410,7 +411,7 @@ var gen_agents = function (map, num) {
 	for (var i = 0; i<num; i++) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
         //var pos = new coordinate(0,0,map);
-		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10)+1, rand_integer(4)+1);
+		agents[i] = new agent(i, pos, map, 2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 0);
 		//agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
 	return agents;
@@ -430,12 +431,18 @@ var total_agents = 10;
 var agents = gen_agents(map, total_agents);
 var corpses = new Array();
 world.death = corpses;
+world.next_wave_count = 10;
 var step = function() {
 	map.regenerate();
-	
+    world.next_wave_count -=1;	
 	for(var i=0; i<agents.length; i++) {
 		agents[i].step();
 	}
+    if (world.next_wave_count == 0){
+        world.next_wave_count = 1000;
+        var birth = new agent(1001, new coordinate(1,1,map) , map, 3, 0.9, 6, 3, 40);
+        global_env().birth(birth);
+    }
 
 }
 var clear;
@@ -466,6 +473,17 @@ app.controller('ctrl', function($scope,$interval) {
 		var char = (0xff - val).toString(16);
 		return char + char + char;
 	}
+	$scope.gen_id_color = function gen_gray_color(val) {
+        if (val > 1000){
+		    var char = ((val - 1000)).toString(16);
+            return "ff2342";
+        }else{
+		    var char = ((val)).toString(16);
+            return "22f345"
+        }
+	}
+
+    $scope.world = world;
 });
 </script>
 <body>
@@ -476,27 +494,24 @@ app.controller('ctrl', function($scope,$interval) {
 </header>
 
 
-<div ng-app="myApp" ng-controller="ctrl">
-	<div class="col-md-2" >
-  		<button ng-click="start()">play</button>
-		<button ng-click="end()">end</button>
-		<button ng-click="learn()">learn</button>
-		<button ng-click="step()">step</button>	
-  		<p>X: {{focus.pos_x}}</p>
-  		<p>Y:{{focus.pos_y}}</p>
-		<p>speed: {{focus.speed}}</p>
-		<p>wait: {{focus.slice}}</p>
-		<p>mark: {{focus.mark}}</p>
-		<p>intelligence: {{focus.intelligence}}</p>
-		<div ng-repeat="a in focus.view">
-			<h4>action {{focus.actions[$index].name}}</h4>
-			<div ng-repeat="x in a.data">
+<div ng-app="myApp" ng-controller="ctrl" style="width:1028px;margin:auto">
+	<div class="col-md-8">
 
-			<p>{{x[0]}},{{x[1]}},{{x[2]}},{{x[3]}},{{x[4]}}</p>
-			</div>
-		</div>
-	</div>
-	<div class="col-md-6">
+        <div>
+            <span>alience will land in next {{world.next_wave_count}} seconds</span>
+            <div style="background-color:black;width:{{world.next_wave_count/2}}px;height:10px;">
+            </div>
+        </div>
+        <div style="border-bottom:1px solid gray;
+                margin-bottom:10px;
+                padding-bottom:10px;">
+                <span class="glyphicon glyphicon-play" ng-click="start()"></span>
+		        <span class="glyphicon glyphicon-pause" ng-click="end()"></span>
+		        <span class="glyphicon glyphicon-eye-open" ng-click="learn()"></span>
+		        <span class="glyphicon glyphicon-step-forward" ng-click="step()"></span>	
+        </div>
+
+        <div style="position:absolute;">
 		<div ng-repeat="tile in map.tiles"
 			style="position:absolute;
 			  left:{{tile.loc.x * 20}}px;
@@ -514,21 +529,59 @@ app.controller('ctrl', function($scope,$interval) {
 			  left:{{agent.pos_x}}px;
 			  display:blocked; text-align:center;
 			  width:{{agent.size}}px;
+              background-color:#{{gen_id_color(agent.id)}};
 			  height:{{agent.size}}px;border:2px solid black;
 			  ">
 		</div>
+        </div>
+
 	</div>
-	<div class="col-md-2">
-        <h4>active list {{agents.length}}</h4>
-		<ul class="list-inline">
-		<li ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
-		</ul>
-	</div>
-	<div class="col-md-2">
-        <h4>dead list</h4>
-		<ul class="list-inline">
-		<li ng-repeat="agent in death">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
-		</ul>
+	<div class="col-md-4">
+        <ul id="rightTab" class="nav nav-tabs">
+	        <li class="active">
+                <a href="#control" data-toggle="tab"> control panel</a>
+	        </li>
+	        <li>
+                <a href="#alive_agents" data-toggle="tab"> population {{agents.length}}</a>
+	        </li>
+            <li>
+                <a href="#dead_agents" data-toggle="tab"> corpse </a>
+            </li>
+        </ul>
+        <div class="tab-content" id="rightTabContent">
+            <div class="tab-pane fade in active" id="control" style="margin-top:5px;">
+                <ul class="list-group">
+		        <li class="list-group-item">speed: {{focus.speed}}</li>
+		        <li class="list-group-item">wait: {{focus.slice}}</li>
+		        <li class="list-group-item">mark: {{focus.mark}}</li>
+		        <li class="list-group-item">intelligence: {{focus.intelligence}}</li>
+                </ul>
+		        <div ng-repeat="act in focus.view">
+                <table class = "table">
+			        <caption>action {{focus.actions[$index].name}}</caption>
+                    <tbody>
+			        <tr ng-repeat="row in act.data">
+                        <td>{{row[0]}}</td>
+                        <td>{{row[1]}}</td>
+                        <td>{{row[2]}}</td>
+                        <td>{{row[3]}}</td>
+                        <td>{{row[4]}}</td>
+			        </tr>
+                    </tbody>
+                </table>
+		        </div>
+            </div>
+            <div class="tab-pane fade" id="alive_agents">
+                <ul class="list-inline">
+		            <li ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
+		        </ul>
+            </div>
+            <div class="tab-pane fade" id="dead_agents">
+		        <ul class="list-inline">
+		            <li ng-repeat="agent in death">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
+		        </ul>
+            </div>
+        </div>
 	</div>
 
 
