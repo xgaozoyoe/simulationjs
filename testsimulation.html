@@ -315,21 +315,21 @@ var Agent = function (id, loc, map, d, lambda, speed, itg, energy, init_actions)
 		this.map.set_tile_resource(this.loc.x, this.loc.y,0);
 		this.size = this.energy/5+10;
 		if (this.energy<= 0 ){
-			global_env().die(this);
             this.map.get_tile(this.loc.x, this.loc.y).agent_die_hook(this);
+			global_env().die(this);
 		} else if (this.energy > 100) {
             var birth = null;
-            birth = new Agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed,
-                this.intelligence,15,init_actions);
-            birth.loc = this.map.offset(birth.loc,-1,-1);
-            if (birth.loc) {
+            var loc = this.map.offset(this.loc,-1,-1);
+            if (loc) {
+                birth = new Agent(this.id, loc, this.map, this.view_distance, this.lambda,this.speed,
+                    this.intelligence,15,init_actions);
                 birth.energy = 20;
                 global_env().birth(birth);
             }
-            birth = new Agent(this.id, this.loc, this.map, this.view_distance, this.lambda,this.speed,
-                this.intelligence,15,init_actions);
-            birth.loc = this.map.offset(birth.loc,+1,+1);
-            if (birth.loc) {
+            loc = this.map.offset(this.loc,+1,+1);
+            if (loc) {
+                birth = new Agent(this.id, loc, this.map, this.view_distance, this.lambda,this.speed,
+                    this.intelligence,15,init_actions);
                 birth.energy = 20;
                 global_env().birth(birth);
             }
