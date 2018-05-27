@@ -155,8 +155,8 @@ var try_move = function(direction) {
 
 var stay = function(loc, agent){
 	var map = loc.map;
-	agent.energy += map.get_tile_resource(agent.loc.x, agent.loc.y);
-	map.set_tile_resource(this.loc.x, this.loc.y,0);
+	agent.attributes.energy += map.get_tile_resource(agent.loc.x, agent.loc.y);
+	map.set_tile_resource(agent.loc.x, agent.loc.y,0);
 	return loc;
 }
 
@@ -171,9 +171,9 @@ var try_hunt = function(loc, agent){
 var hunt = function(loc, agent){
     var tile = loc.map.get_tile(loc.x, loc.y);
     for(var i = 0; i<tile.agents.length; i++) {
-        //if(tile.agents[i].energy < agent.energy) {
-            world.die(tile.agents[i].energy);
-            agent.energy += tile.agents[i].energy;
+        //if(tile.agents[i].energy < agent.attributes.energy) {
+            agent.attributes.energy += tile.agents[i].attributes.energy;
+            tile.agents[i].energe = 0;
             tile.agent_leave_hook(tile.agents[i]);
             return loc;
             //break;
@@ -212,9 +212,9 @@ var map_gain = function (map, loc, action, caster) {
                 return 0;
             } else {
                 for (var i=0;i<tile.agents.length;i++) {
-                    if(tile.agents[i].energy < caster.energy && tile.agents[i].id < 1000) {
+                    if(tile.agents[i].attributes.energy < caster.attributes.energy && tile.agents[i].id < 1000) {
                         //alert(i);
-                        return tile.agents[i].energy;
+                        return tile.agents[i].attributes.energy;
                     }
                 }
                 return 0;
@@ -307,7 +307,7 @@ function reproduce(mother, init_actions)
 {
 	var rx = rand_integer(3) - 1;
 	var ry = rand_integer(3) - 1;
-	var loc = mother.map.offset(this.loc,rx,ry);
+	var loc = mother.map.offset(mother.loc,rx,ry);
     if (loc) {
 		// Initialize attributes for a new baby
 		var attributes = new AgentAttribute(mother.attributes.view_distance,
@@ -340,6 +340,8 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 		return (this.attributes.energy <= 0);
 	}
 
+    this.actions = new Array();
+
 	this.reproduce_check = function(){
 		return (this.attributes.energy > 100);
 	}
@@ -349,7 +351,7 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 		this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
 		this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
 
-		this.size = this.energy/5+10;
+		this.size = this.attributes.energy/5+10;
 	}
 
 	this.step_finish = function() {
@@ -359,13 +361,13 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 		}
 		if (this.reproduce_check()) {
 			reproduce(this, init_actions);
-            this.attribute.energy = 70;
+            this.attributes.energy = 30;
         }
 		this.render();
 	}	
 
     this.survive = function() {
-		this.energy = this.energy - 1;
+		this.attributes.energy = this.attributes.energy - 1;
     }
 
 	this.add_action = function(action){
@@ -463,7 +465,7 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 
 			this.step_finish();	
 			this.train(this.attributes.intelligence);
-			this.slice += 60;
+			this.slice += 10;
 		} else {
 			this.slice = this.slice - this.attributes.speed;
             this.survive();
@@ -497,7 +499,7 @@ var gen_agents = function (map, num) {
 	for (var i = 0; i<num; i++) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
         //var pos = new coordinate(0,0,map);
-		var attributes = new AgentAttribute(2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 0 , 1)
+		var attributes = new AgentAttribute(2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 20 , 1)
 		agents[i] = new Agent(i, pos, map, attributes, normal_actions);
 		//agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
@@ -522,12 +524,12 @@ world.next_wave_count = 100;
 var step = function() {
 	map.regenerate();
     world.next_wave_count -=1;	
-	for(var i=0; i<agents.length; i++) {
-		agents[i].step();
-	}
+    agents.forEach(function(agent){
+        agent.step();
+    });
     if (world.next_wave_count == 0){
         world.next_wave_count = 1000;
-		var attribute = new AgentAttribute(3, 0.9, 15, 3, 40, 1);
+		var attribute = new AgentAttribute(3, 0.9, 5, 3, 40, 1);
         var birth = new Agent(1001, new coordinate(1,1,map) , map, attribute, predator_actions);
         global_env().birth(birth);
     }
@@ -640,8 +642,8 @@ app.controller('ctrl', function($scope,$interval) {
         <div class="tab-content" id="rightTabContent">
             <div class="tab-pane fade in active" id="control" style="margin-top:5px;">
                 <ul class="list-group">
-		        <li class="list-group-item">speed: {{focus.attribues.speed}}</li>
-		        <li class="list-group-item">wait: {{focus.attributes.slice}}</li>
+		        <li class="list-group-item">speed: {{focus.attributes.speed}}</li>
+		        <li class="list-group-item">wait: {{focus.slice}}</li>
 		        <li class="list-group-item">energy: {{focus.attributes.energy}}</li>
 		        <li class="list-group-item">intelligence: {{focus.attributes.intelligence}}</li>
                 </ul>
