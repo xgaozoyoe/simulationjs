@@ -154,6 +154,13 @@ var try_move = function(direction) {
 }
 
 var stay = function(loc, agent){
+	var map = loc.map;
+	agent.energy += map.get_tile_resource(agent.loc.x, agent.loc.y);
+	map.set_tile_resource(this.loc.x, this.loc.y,0);
+	return loc;
+}
+
+var try_stay = function(loc, agent){
 	return loc;
 }
 
@@ -185,19 +192,11 @@ var move_left =  new Action("MLeft", ActionCategory.ACTION_MOVE, move(_left), tr
 var move_right = new Action("MRight", ActionCategory.ACTION_MOVE, move(_right), try_move(_right));
 var move_top = new Action("MTop", ActionCategory.ACTION_MOVE, move(_top), try_move(_top));
 var move_bottom = new Action("MBottom", ActionCategory.ACTION_MOVE, move(_bottom), try_move(_bottom));
-var stay = new Action("MStay", ActionCategory.ACTION_COLLECT, stay, stay);
+var stay = new Action("MStay", ActionCategory.ACTION_COLLECT, stay, try_stay);
 var hunt = new Action("MHunt", ActionCategory.ACTION_HUNT, hunt, try_hunt);
 
-var actions = [stay, move_left, move_right, move_top, move_bottom];
-
-/* Provided an agent, create an array of actions */
-function generate_actions(agent) {
-    var act = new Array();
-    for (var i=0;i<actions.length;i++){
-        act.push(actions[i]);
-    }
-    return act;
-}
+var normal_actions = [stay, move_left, move_right, move_top, move_bottom];
+var predator_actions = [stay, move_left, move_right, move_top, move_bottom, hunt];
 
 var map_gain = function (map, loc, action, caster) {
 	if (loc != null) {
@@ -214,7 +213,7 @@ var map_gain = function (map, loc, action, caster) {
             } else {
                 for (var i=0;i<tile.agents.length;i++) {
                     if(tile.agents[i].energy < caster.energy && tile.agents[i].id < 1000) {
-                        alert(i);
+                        //alert(i);
                         return tile.agents[i].energy;
                     }
                 }
@@ -296,78 +295,94 @@ world.birth = function(agent){
     this.agents.push(agent);
 }
 var MIN_MOVE_GAP = 20;
+var AgentAttribute = function(view, lambda, speed, itg, energy, reprate) {
+	this.view_distance = view;
+	this.lambda = lambda;
+	this.speed = speed;
+	this.intelligence = itg;
+	this.energy = energy;
+	this.reproduce_rate = reprate;
+}
+function reproduce(mother, init_actions)
+{
+	var rx = rand_integer(3) - 1;
+	var ry = rand_integer(3) - 1;
+	var loc = mother.map.offset(this.loc,rx,ry);
+    if (loc) {
+		// Initialize attributes for a new baby
+		var attributes = new AgentAttribute(mother.attributes.view_distance,
+			mother.attributes.lambda,
+			mother.attributes.speed,
+			mother.attributes.intelligence,
+			20); // 20 energy for a new baby might be too much ?
+
+    	birth = new Agent(mother.id, loc, mother.map, attributes, init_actions);
+        global_env().birth(birth);
+    }
+}
+
 /*  
  *  loc: coordinate, 
  *  map: map,
- *  d: int <= distance of the view
  */
-var Agent = function (id, loc, map, d, lambda, speed, itg, energy, init_actions) {
-	this.energy = energy;
+
+var Agent = function (id, loc, map, attributes, init_actions) {
+
+	// Main attributes of the agent
 	this.id = id;
-	this.intelligence = itg;
+	this.loc = loc;
+	this.map = map;
+	this.view = new Array();
+	this.size = 10;
+	this.attributes = attributes;
 
+	this.death_check = function(){
+		return (this.attributes.energy <= 0);
+	}
 
-	// FIXME: pos_x and pos_y are rendering attributes, please move
-	this.update = function() {
+	this.reproduce_check = function(){
+		return (this.attributes.energy > 100);
+	}
+
+	// FIXME: the rendering attributes should be splited into another module
+	this.render = function() {
 		this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
 		this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
-		this.energy += this.map.get_tile_resource(this.loc.x, this.loc.y);
-		this.map.set_tile_resource(this.loc.x, this.loc.y,0);
+
 		this.size = this.energy/5+10;
-		if (this.energy<= 0 ){
+	}
+
+	this.step_finish = function() {
+		if (this.death_check()) {
             this.map.get_tile(this.loc.x, this.loc.y).agent_die_hook(this);
 			global_env().die(this);
-		} else if (this.energy > 100) {
-            var birth = null;
-            var loc = this.map.offset(this.loc,-1,-1);
-            if (loc) {
-                birth = new Agent(this.id, loc, this.map, this.view_distance, this.lambda,this.speed,
-                    this.intelligence,15,init_actions);
-                birth.energy = 20;
-                global_env().birth(birth);
-            }
-            loc = this.map.offset(this.loc,+1,+1);
-            if (loc) {
-                birth = new Agent(this.id, loc, this.map, this.view_distance, this.lambda,this.speed,
-                    this.intelligence,15,init_actions);
-                birth.energy = 20;
-                global_env().birth(birth);
-            }
-            this.energy = 70;
+		}
+		if (this.reproduce_check()) {
+			reproduce(this, init_actions);
+            this.attribute.energy = 70;
         }
-
-        
+		this.render();
 	}	
+
     this.survive = function() {
 		this.energy = this.energy - 1;
     }
 
-	this.speed = speed;
+	this.add_action = function(action){
+		this.actions[this.actions.length] = action;
+		this.view[this.view.length] = new Matrix2D(2*this.attributes.view_distance + 1, 2*this.attributes.view_distance + 1);
+	}
 
-	this.size = 10;
-
-
-	// Main attributes of the agent
-	this.loc = loc;
-	this.map = map;
-	this.lambda = lambda;
-    // Basic actions
-	this.actions = generate_actions(this);
+	// this.actions = generate_actions(this);
     // Extra actions
     for (var a=0; a<init_actions.length; a++) {
-        this.actions.push(init_actions[a]);
+		this.add_action(init_actions[a]);
     }
-	this.view_distance = d;
-	this.view = new Array();
-	for (var a=0; a<this.actions.length; a++) {
-		this.view[a] = new Matrix2D(2*d+1, 2*d+1);
-	}
-	this.energy;
 
 	/* Given a coordinate, return its estimate if it is in the memory or view, else return 0 
          */
 	this.estimate = function(aid, loc) {
-		var d = this.view_distance;
+		var d = this.attributes.view_distance;
 		if ((loc.x - this.loc.x) + d >= 0 && (this.loc.x - loc.x) + d >= 0) {
 			if ((loc.y - this.loc.y) + d >=0 && (this.loc.y - loc.y) + d >= 0) {
 				// need to change coordinate back
@@ -391,12 +406,17 @@ var Agent = function (id, loc, map, d, lambda, speed, itg, energy, init_actions)
 		}
 		return aid;
 	}
+
+/* The main learning function which only depends on estimate and policy and view */
 	this.learn = function () {
+		var d = this.attributes.view_distance;
+		var vsize = 2 * this.attributes.view_distance + 1; // the size of the array of the view
+
 		for(var i=0; i<this.actions.length; i++) {
-			for (var offset_x = 0; offset_x < 2*this.view_distance + 1; offset_x ++) {
-				for (var offset_y = 0; offset_y <2*this.view_distance + 1; offset_y ++) {
+			for (var offset_x = 0; offset_x < vsize; offset_x ++) {
+				for (var offset_y = 0; offset_y < vsize; offset_y ++) {
 					/* Get the location on the map of the view point in the view */
-					var source_loc = this.map.offset(this.loc, offset_x-d, offset_y-d);
+					var source_loc = this.map.offset(this.loc, offset_x - d, offset_y - d);
 					if (source_loc == null) {
 						this.view[i].coordinate_set(offset_x,offset_y,0);
 					} else {
@@ -407,19 +427,14 @@ var Agent = function (id, loc, map, d, lambda, speed, itg, energy, init_actions)
 						if (result_loc == null) { // An invalid action
 							this.view[i].coordinate_set(offset_x,offset_y,0);
 						} else {
-							this.view[i].coordinate_set(offset_x,offset_y,map_gain(this.map, result_loc,
-                                this.actions[i],this));
-							if(isNaN( map_gain(this.map, result_loc, this.actions[i],this ))) {
-								console.error("gain is not a number!");
-							}
+							this.view[i].coordinate_set(offset_x,offset_y,
+									map_gain(this.map, result_loc, this.actions[i],this));
 							var aid = this.policy(result_loc);
 							if (aid >=0 ) {
 								var potential_estimate = this.estimate(aid, result_loc);
-								if(isNaN(potential_estimate)) {
-									console.error("potential estimation is NaN");
-								}
-								this.view[i].coordinate_set(offset_x,offset_y,this.view[i].coordinate(offset_x,
-                                offset_y) + Math.floor(0.5 * potential_estimate));
+								this.view[i].coordinate_set(offset_x,offset_y,
+									this.view[i].coordinate(offset_x, offset_y)
+										+ Math.floor(0.5 * potential_estimate));
 							}
 						}
 					}
@@ -427,6 +442,8 @@ var Agent = function (id, loc, map, d, lambda, speed, itg, energy, init_actions)
 			}
 		}
 	}
+
+/* Train the agent for serveral rounds depends on its intelligence */
 	this.train = function(round) {
 		for (var i=0; i<round; i++) {
 			this.learn();
@@ -443,14 +460,16 @@ var Agent = function (id, loc, map, d, lambda, speed, itg, energy, init_actions)
             this.map.get_tile(this.loc.x, this.loc.y).agent_leave_hook(this);
 			this.loc = loc;
             this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
-			this.update();	
-			this.train(this.intelligence);
-			this.slice = 60;
+
+			this.step_finish();	
+			this.train(this.attributes.intelligence);
+			this.slice += 60;
 		} else {
-			this.slice = this.slice - this.speed;
+			this.slice = this.slice - this.attributes.speed;
             this.survive();
 		}
 	}
+
 	this.learn();
 	this.slice = 20;
     this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
@@ -478,7 +497,8 @@ var gen_agents = function (map, num) {
 	for (var i = 0; i<num; i++) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
         //var pos = new coordinate(0,0,map);
-		agents[i] = new Agent(i, pos, map, 2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 0, []);
+		var attributes = new AgentAttribute(2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 0 , 1)
+		agents[i] = new Agent(i, pos, map, attributes, normal_actions);
 		//agents[i] = new agent(pos, map, 2, 0.8, 10);
 	}
 	return agents;
@@ -498,7 +518,7 @@ var total_agents = 10;
 var agents = gen_agents(map, total_agents);
 var corpses = new Array();
 world.death = corpses;
-world.next_wave_count = 10;
+world.next_wave_count = 100;
 var step = function() {
 	map.regenerate();
     world.next_wave_count -=1;	
@@ -507,7 +527,8 @@ var step = function() {
 	}
     if (world.next_wave_count == 0){
         world.next_wave_count = 1000;
-        var birth = new Agent(1001, new coordinate(1,1,map) , map, 3, 0.9, 6, 3, 40, [hunt]);
+		var attribute = new AgentAttribute(3, 0.9, 15, 3, 40, 1);
+        var birth = new Agent(1001, new coordinate(1,1,map) , map, attribute, predator_actions);
         global_env().birth(birth);
     }
 
@@ -564,14 +585,14 @@ app.controller('ctrl', function($scope,$interval) {
 <div ng-app="myApp" ng-controller="ctrl" style="width:1028px;margin:auto">
 	<div class="col-md-8">
 
-        <div>
-            <span>alience will land in next {{world.next_wave_count}} seconds</span>
+        <div style="font-size:20px">
+            <span>Alience will land in next {{world.next_wave_count}} seconds</span>
             <div style="background-color:black;width:{{world.next_wave_count/2}}px;height:10px;">
             </div>
         </div>
         <div style="border-bottom:1px solid gray;
                 margin-bottom:10px;
-                padding-bottom:10px;">
+                padding:10px;font-size:20px">
                 <span class="glyphicon glyphicon-play" ng-click="start()"></span>
 		        <span class="glyphicon glyphicon-pause" ng-click="end()"></span>
 		        <span class="glyphicon glyphicon-eye-open" ng-click="learn()"></span>
@@ -619,10 +640,10 @@ app.controller('ctrl', function($scope,$interval) {
         <div class="tab-content" id="rightTabContent">
             <div class="tab-pane fade in active" id="control" style="margin-top:5px;">
                 <ul class="list-group">
-		        <li class="list-group-item">speed: {{focus.speed}}</li>
-		        <li class="list-group-item">wait: {{focus.slice}}</li>
-		        <li class="list-group-item">energy: {{focus.energy}}</li>
-		        <li class="list-group-item">intelligence: {{focus.intelligence}}</li>
+		        <li class="list-group-item">speed: {{focus.attribues.speed}}</li>
+		        <li class="list-group-item">wait: {{focus.attributes.slice}}</li>
+		        <li class="list-group-item">energy: {{focus.attributes.energy}}</li>
+		        <li class="list-group-item">intelligence: {{focus.attributes.intelligence}}</li>
                 </ul>
 		        <div ng-repeat="act in focus.view">
                 <table class = "table">
@@ -640,13 +661,13 @@ app.controller('ctrl', function($scope,$interval) {
 		        </div>
             </div>
             <div class="tab-pane fade" id="alive_agents">
-                <ul class="list-inline">
-		            <li ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
+                <ul class="list-group" style="margin-top:10px">
+		            <li class="list-group-item" ng-repeat="agent in agents">agent id: {{agent.id}}, speed: {{agent.attributes.speed}}, int: {{agent.attributes.intelligence}} </li>
 		        </ul>
             </div>
             <div class="tab-pane fade" id="dead_agents">
-		        <ul class="list-inline">
-		            <li ng-repeat="agent in death">agent id: {{agent.id}}, speed: {{agent.speed}}, int: {{agent.intelligence}} </li>
+		        <ul class="list-group" style="margin-top:10px">
+		            <li class="list-group-item" ng-repeat="agent in death">agent id: {{agent.id}}, speed: {{agent.attributes.speed}}, int: {{agent.attributes.intelligence}} </li>
 		        </ul>
             </div>
         </div>
