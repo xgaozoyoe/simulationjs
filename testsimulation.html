@@ -132,6 +132,8 @@ var ActionCategory = {
 var move = function(direction) {
     var fn = function (loc, agent) {
 		var attempt_loc = direction(loc);
+        agent.slice += 10;
+        agent.attributes.energy -=1;
 		if (loc.map.offset(attempt_loc, 0, 0) != null) {
 			return attempt_loc;
 		} else {
@@ -147,22 +149,41 @@ var try_move = function(direction) {
 		if (loc.map.offset(attempt_loc, 0, 0) != null) {
 			return attempt_loc;
 		} else {
-			null;
+			return null;
 		}
 	}
 	return fn;
 }
 
-var stay = function(loc, agent){
+var np_stay = function(loc, agent){
 	var map = loc.map;
-	agent.attributes.energy += map.get_tile_resource(agent.loc.x, agent.loc.y);
-	map.set_tile_resource(agent.loc.x, agent.loc.y,0);
+    var res = map.get_tile_resource(agent.loc.x, agent.loc.y);
+    if (res >= 2) {
+	    agent.attributes.energy += 1;
+	    map.set_tile_resource(agent.loc.x, agent.loc.y,res - 2);
+    } else {
+	    agent.attributes.energy += map.get_tile_resource(agent.loc.x, agent.loc.y);
+	    map.set_tile_resource(agent.loc.x, agent.loc.y,0);
+    }
+    agent.slice = 2;
 	return loc;
 }
 
-var try_stay = function(loc, agent){
+var try_np_stay = function(loc, agent){
 	return loc;
 }
+
+
+var p_stay = function(loc, agent){
+    agent.slice = 4;
+    agent.attributes.energy -= 1;
+	return loc;
+}
+
+var try_p_stay = function(loc, agent){
+	return loc;
+}
+
 
 var try_hunt = function(loc, agent){
     return loc;
@@ -171,13 +192,14 @@ var try_hunt = function(loc, agent){
 var hunt = function(loc, agent){
     var tile = loc.map.get_tile(loc.x, loc.y);
     for(var i = 0; i<tile.agents.length; i++) {
-        //if(tile.agents[i].energy < agent.attributes.energy) {
+        if(tile.agents[i].attributes.energy < agent.attributes.energy && tile.agents[i].id < 1000) {
             agent.attributes.energy += tile.agents[i].attributes.energy;
-            tile.agents[i].energe = 0;
+            tile.agents[i].attributes.energy = 0;
             tile.agent_leave_hook(tile.agents[i]);
+            //alert(tile.agents.length);
             return loc;
             //break;
-        //}
+        }
     }
     return loc;
 }
@@ -192,11 +214,14 @@ var move_left =  new Action("MLeft", ActionCategory.ACTION_MOVE, move(_left), tr
 var move_right = new Action("MRight", ActionCategory.ACTION_MOVE, move(_right), try_move(_right));
 var move_top = new Action("MTop", ActionCategory.ACTION_MOVE, move(_top), try_move(_top));
 var move_bottom = new Action("MBottom", ActionCategory.ACTION_MOVE, move(_bottom), try_move(_bottom));
-var stay = new Action("MStay", ActionCategory.ACTION_COLLECT, stay, try_stay);
+var non_predator_stay = new Action("NPMStay", ActionCategory.ACTION_COLLECT, np_stay, try_np_stay);
+
+var predator_stay = new Action("PMStay", ActionCategory.ACTION_COLLECT, p_stay, try_p_stay);
+
 var hunt = new Action("MHunt", ActionCategory.ACTION_HUNT, hunt, try_hunt);
 
-var normal_actions = [stay, move_left, move_right, move_top, move_bottom];
-var predator_actions = [stay, move_left, move_right, move_top, move_bottom, hunt];
+var normal_actions = [non_predator_stay, move_left, move_right, move_top, move_bottom];
+var predator_actions = [predator_stay, move_left, move_right, move_top, move_bottom, hunt];
 
 var map_gain = function (map, loc, action, caster) {
 	if (loc != null) {
@@ -204,7 +229,11 @@ var map_gain = function (map, loc, action, caster) {
 			return 0;
 		}
 		if (action.category == ActionCategory.ACTION_COLLECT) {
+            if (caster.id < 1000) {
 			return map.get_tile_resource(loc.x, loc.y);
+            }else{
+                return 0;
+            }
 		}
         if (action.category == ActionCategory.ACTION_HUNT) {
             var tile = loc.map.get_tile(loc.x, loc.y);
@@ -366,10 +395,6 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 		this.render();
 	}	
 
-    this.survive = function() {
-		this.attributes.energy = this.attributes.energy - 1;
-    }
-
 	this.add_action = function(action){
 		this.actions[this.actions.length] = action;
 		this.view[this.view.length] = new Matrix2D(2*this.attributes.view_distance + 1, 2*this.attributes.view_distance + 1);
@@ -465,10 +490,8 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 
 			this.step_finish();	
 			this.train(this.attributes.intelligence);
-			this.slice += 10;
 		} else {
 			this.slice = this.slice - this.attributes.speed;
-            this.survive();
 		}
 	}
 
@@ -528,9 +551,9 @@ var step = function() {
         agent.step();
     });
     if (world.next_wave_count == 0){
-        world.next_wave_count = 1000;
-		var attribute = new AgentAttribute(3, 0.9, 5, 3, 40, 1);
-        var birth = new Agent(1001, new coordinate(1,1,map) , map, attribute, predator_actions);
+        world.next_wave_count = 100;
+		var attribute = new AgentAttribute(3, 0.9, 5, 3, 80, 1);
+        var birth = new Agent(1001, new coordinate(10,10,map) , map, attribute, predator_actions);
         global_env().birth(birth);
     }
 
@@ -636,7 +659,7 @@ app.controller('ctrl', function($scope,$interval) {
                 <a href="#alive_agents" data-toggle="tab"> population {{agents.length}}</a>
 	        </li>
             <li>
-                <a href="#dead_agents" data-toggle="tab"> corpse </a>
+                <a href="#dead_agents" data-toggle="tab"> corpse {{death.length}}</a>
             </li>
         </ul>
         <div class="tab-content" id="rightTabContent">
