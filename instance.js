@@ -17,21 +17,11 @@ function coordinate(x, y, map) {
 	this.y = y;
 }
 
-function tile(loc, res) {
+
+function Tile(loc) {
 	this.loc = loc;
-	this.res = res;
-	this.reg = 0;
-	this.regen_rate = 10;
-	this.slice = 0;
+	this.resource = new Array();
     this.agents = new Array();
-	this.regenerate = function(){
-		if (this.slice == this.reg_rate){
-			this.slice = 0;
-			this.res += this.reg;
-		}else{
-			this.slice += 1;
-		}
-	}
     this.agent_enter_hook = function(agent){
 	    this.agents.push(agent);
     }
@@ -49,12 +39,21 @@ function tile(loc, res) {
 		    }
 	    }
     }
+    this.regenerate_resource = function(){
+        this.resource.forEach(res) {
+            res.regenerate();
+        });
+    }
+    this.get_resource_by_type = function(preference_list){
+    }
 }
 
 function map(width, height) {
+
 	this.width = width;
 	this.height = height;
 	this.boundary = [map_boundary(this)];
+
 	this.offset = function(loc, x, y) {
 		var new_loc = new coordinate(loc.x + x, loc.y + y, this);
 		for(var i = 0; i < this.boundary.length; i++) {
@@ -65,28 +64,26 @@ function map(width, height) {
 		}
 		return new_loc;
 	}
+
+    /* Initialize all the tiles */
+
 	this.tiles = new Array();
+
 	for (var i=0; i<width; i++) {
 		for (var j=0; j<height; j++) {
-			this.tiles[j * width + i] = new tile({x:i, y:j}, 0);
-			this.tiles[j * width + i].reg = rand_integer(5);
-			this.tiles[j * width + i].reg_rate = rand_integer(10)+30;
+			this.tiles[j * width + i] = new Tile({x:i, y:j});
 		}
 	}
-	this.set_tile_resource = function(x, y, v){
-		this.tiles[y * width + x ].res = v;
-	}
-	this.get_tile_resource = function(x,y) {
-		return this.tiles[y * width + x].res;
-	}
 
-	this.regenerate = function(){
+    /* Recalculate resource */
+	this.regenerate_resource = function(){
 		for (var i=0; i<width; i++) {
 			for (var j=0; j<height; j++) {
-					this.tiles[j * width + i].regenerate();
+			    this.tiles[j * width + i].regenerate_resource();
 			}
 		}
 	}
+
 	this.get_tile = function(x,y){
 		return this.tiles[y*width + x];
 	}
@@ -99,13 +96,6 @@ var Action = function(name, category, act, attempt){
     this.attempt = attempt;
 }
 
-var ActionCategory = {
-	ACTION_MOVE:1,
-	ACTION_AFFEND:2,
-	ACTION_DEFEND:3,
-	ACTION_COLLECT:4,
-    ACTION_HUNT:5
-}
 /* Standard movement action functor */
 var move = function(direction) {
     var fn = function (loc, agent) {
@@ -136,13 +126,8 @@ var try_move = function(direction) {
 var np_stay = function(loc, agent){
 	var map = loc.map;
     var res = map.get_tile_resource(agent.loc.x, agent.loc.y);
-    if (res >= 2) {
-	    agent.attributes.energy += 1;
-	    map.set_tile_resource(agent.loc.x, agent.loc.y,res - 2);
-    } else {
-	    agent.attributes.energy += map.get_tile_resource(agent.loc.x, agent.loc.y);
-	    map.set_tile_resource(agent.loc.x, agent.loc.y,0);
-    }
+    agent.attributes.energy += map.get_tile(agent.loc.x,
+        agent.loc.y).get_resource_by_type(agent.resource_preference).consume(4);
     agent.slice = 2;
 	return loc;
 }
@@ -297,6 +282,7 @@ var AgentAttribute = function(view, lambda, speed, itg, energy, reprate) {
 	this.energy = energy;
 	this.reproduce_rate = reprate;
 	this.reproduce_slice = reprate;
+    this.resource_preference = new Array();
 }
 
 /*  
@@ -324,12 +310,6 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 		return (this.attributes.energy > 100);
 	}
 
-	// FIXME: the rendering attributes should be splited into another module
-	this.render = function() {
-		this.pos_x = this.loc.x * MIN_MOVE_GAP + (5 - rand_integer(9));
-		this.pos_y = this.loc.y * MIN_MOVE_GAP - (5 - rand_integer(9));
-	}
-
 	this.step_finish = function() {
 		if (this.death_check()) {
             this.map.get_tile(this.loc.x, this.loc.y).agent_die_hook(this);
@@ -338,7 +318,6 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 		if (this.reproduce_check()) {
 			reproduce(this, init_actions);
         }
-		this.render();
 	}	
 
 	this.add_action = function(action){
@@ -447,9 +426,5 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 	this.slice = 20;
     this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
 	
-	/* some dumb code for rendering purpose, which should be moved out */
-	this.pos_x = this.loc.x * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
-	this.pos_y = this.loc.y * MIN_MOVE_GAP - (this.size-MIN_MOVE_GAP + 2)/2;
-
 }
 

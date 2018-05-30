@@ -25,16 +25,23 @@ var gen_map = function (width, height) {
 	return m;
 }
 
+/* Draw agent */
+var rend_agent = function(agent){
+	/* some dumb code for rendering purpose, which should be moved out */
+	//agent.pos_x = agent.loc.x * MIN_MOVE_GAP - (agent.size-MIN_MOVE_GAP + 2)/2;
+	//agent.pos_y = agent.loc.y * MIN_MOVE_GAP - (agent.size-MIN_MOVE_GAP + 2)/2;
+	agent.pos_x = agent.loc.x * MIN_MOVE_GAP + (5 - rand_integer(9));
+	agent.pos_y = agent.loc.y * MIN_MOVE_GAP - (5 - rand_integer(9));
+}
 
 var gen_agents = function (map, num) {
 	var agents = [];
 	var i = 0;
 	for (var i = 0; i<num; i++) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
-        //var pos = new coordinate(0,0,map);
 		var attributes = new AgentAttribute(2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 20 , 3);
 		agents[i] = new Agent(i, pos, map, attributes, normal_actions);
-		//agents[i] = new agent(pos, map, 2, 0.8, 10);
+        rend_agent(agents[i]);
 	}
 	return agents;
 }
@@ -76,12 +83,20 @@ var agents = gen_agents(map, total_agents);
 var corpses = new Array();
 world.death = corpses;
 world.next_wave_count = 100;
+
+
+
 var step = function() {
 	map.regenerate();
     world.next_wave_count -=1;	
     agents.forEach(function(agent){
         agent.step();
     });
+
+    agents.forEach(function(agent){
+        rend_agent(agent);
+    });
+
     if (world.next_wave_count == 0){
         world.next_wave_count = 100;
 		var attribute = new AgentAttribute(3, 0.9, 5, 3, 30, 20);
