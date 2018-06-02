@@ -8,38 +8,70 @@ var ActionCategory = {
 
 var ResourceCategory = {
     RESOURCE_VEG:1,
-    RESOURCE_JUNK:2,
-    RESOURCE_MANURE:3
+    RESOURCE_SOIL:2,
+    RESOURCE_WATER:3,
+    RESOURCE_JUNK:4,
 }
 
-function ResourceVeg(reg_rate,reg_volumn, max_volumn, start_volumn) {
+var ResourceVeg = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
     this.resource_type = ResourceCategory.RESOURCE_VEG;
     this.regen_rate = reg_rate;
     this.regen_volumn = reg_volumn;
     this.max_volumn = max_volumn;
-    this.res_volumn = res;
+    this.resource_volumn = start_volumn;
     this.slice = 0;
    	this.regenerate = function() {
-		if (this.slice == this.reg_rate){
+		if (this.slice == this.regen_rate){
 			this.slice = 0;
-			this.res_volumn += this.regen_volumn;
+			this.resource_volumn += this.regen_volumn;
+            if (this.resource_volumn >= this.max_volumn) {
+                this.resource_volumn = this.max_volumn;
+            }
 		}else{
 			this.slice += 1;
 		}
 	}
     this.consume = function (volumn) {
-        if(this.res_volumn >= volumn) {
-            this.res_volumn -= volumn;
+        if(this.resource_volumn >= volumn) {
+            this.resource_volumn -= volumn;
             return volumn;
         } else {
-            var c = this.res_volumn;
-            this.res_volumn = 0;
+            var c = this.resource_volumn;
+            this.resource_volumn = 0;
             return c;
         }
     }
 }
 
-/* Action is defined by triple functions (act * attempt * gain)
+var ResourceWater = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
+    this.resource_type = ResourceCategory.RESOURCE_WATER;
+    this.regen_rate = reg_rate;
+    this.regen_volumn = reg_volumn;
+    this.max_volumn = max_volumn;
+    this.resource_volumn = start_volumn;
+    this.slice = 0;
+   	this.regenerate = function() {
+		if (this.slice == this.reg_rate){
+			this.slice = 0;
+			this.resource_volumn += this.regen_volumn;
+		}else{
+			this.slice += 1;
+		}
+	}
+    this.consume = function (volumn) {
+        if(this.resource_volumn >= volumn) {
+            this.resource_volumn -= volumn;
+            return volumn;
+        } else {
+            var c = this.resource_volumn;
+            this.resource_volumn = 0;
+            return c;
+        }
+    }
+}
+
+
+/* Action is defined by triple functions (act * attempt * gain) */
 var Action = function(name, category, act, attempt, gain){
     this.name = name;
 	this.category = category;
@@ -180,7 +212,12 @@ var map_gain = function (map, loc, action, caster) {
 		}
 		if (action.category == ActionCategory.ACTION_COLLECT) {
             if (caster.id < 1000) {
-			return map.get_tile_resource(loc.x, loc.y);
+                var res = map.get_tile(loc.x, loc.y).get_resource_by_type(caster.resource_preference);
+                if (res) {
+			        return res.resource_volumn;
+                } else {
+                    return 0;
+                }
             }else{
                 return 0;
             }

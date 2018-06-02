@@ -11,6 +11,7 @@
 <script src="http://cdn.static.runoob.com/libs/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 <script src="http://cdn.static.runoob.com/libs/angular.js/1.4.6/angular.min.js"></script>
 <script src="utils.js"></script>
+<script src="constants.js"></script>
 <script src="instance.js"></script>
 <script src="world.js"></script>
 </head>
@@ -49,8 +50,8 @@
 			  display:blocked;
 			  width:20px;text-align:center;
               border:1 px solid yellow;
-			  height:20px;background-color:#{{gen_gray_color(tile.res)}}">
-              {{tile.res}}
+			  height:20px;background-color:#{{gen_gray_color(tile)}}">
+              {{tile.resource[0].resource_volumn}}
 		</div>
 	
 		<div ng-repeat="agent in agents"

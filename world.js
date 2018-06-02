@@ -15,11 +15,20 @@ world.birth = function(agent){
     this.agents.push(agent);
 }
 
+var gen_resource = function() {
+    var c = rand_integer(4);
+    if (c <=2) {
+        return (new ResourceVeg(rand_integer(150)+150, 3, 15, 10));
+    } else {
+        return (new ResourceWater(rand_integer(150)+150, 3, 15, 10));
+    }
+}
+
 var gen_map = function (width, height) {
 	var m = new map(width, height);
 	for (var i=0; i<width; i++) {
 		for (var j=0; j<height; j++) {
-			m.set_tile_resource(i,j,rand_integer(15));
+			m.get_tile(i,j).add_resource(gen_resource());
 		}
 	}
 	return m;
@@ -41,6 +50,7 @@ var gen_agents = function (map, num) {
 		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
 		var attributes = new AgentAttribute(2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 20 , 3);
 		agents[i] = new Agent(i, pos, map, attributes, normal_actions);
+        agents[i].add_preference(ResourceCategory.RESOURCE_VEG);
         rend_agent(agents[i]);
 	}
 	return agents;
@@ -87,7 +97,7 @@ world.next_wave_count = 100;
 
 
 var step = function() {
-	map.regenerate();
+	map.regenerate_resource();
     world.next_wave_count -=1;	
     agents.forEach(function(agent){
         agent.step();
@@ -130,8 +140,13 @@ app.controller('ctrl', function($scope,$interval) {
 		$scope.focus.step();
 	}
 	$scope.gen_gray_color = function gen_gray_color(val) {
-		var char = (0xff - val).toString(16);
-		return char + char + char;
+        if (val.resource[0].resource_type == ResourceCategory.RESOURCE_WATER) {
+		    var char = (0xff - val.resource[0].resource_volumn).toString(16);
+		    return "0000" + char;
+        } else {
+		    var char = (0xff - val.resource[0].resource_volumn).toString(16);
+		    return "00" + char + "00";
+        }
 	}
 	$scope.gen_id_color = function gen_gray_color(val) {
         if (val > 1000){

@@ -45,15 +45,21 @@ function Tile(loc) {
         });
     }
     /* return the first resource found in the preference_list */
+    /* FIXME: needs optimize */
     this.get_resource_by_type = function(preference_list){
+        var resources = this.resource;
+        var ret = null;
         preference_list.forEach(function(preference){
-           this.resource.forEach(function(resource){
+           resources.forEach(function(resource){
                if(resource.resource_type == preference){
-                   return preference;
+                   ret = resource;
                }
            });
         });
-        return null;
+        return ret;
+    }
+    this.add_resource = function(resource) {
+        this.resource.push(resource);
     }
 }
 
@@ -163,7 +169,6 @@ var AgentAttribute = function(view, lambda, speed, itg, energy, reprate) {
 	this.energy = energy;
 	this.reproduce_rate = reprate;
 	this.reproduce_slice = reprate;
-    this.resource_preference = new Array();
 }
 
 /*  
@@ -180,6 +185,7 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 	this.view = new Array();
 	this.size = 10;
 	this.attributes = attributes;
+    this.resource_preference = new Array();
 
 	this.death_check = function(){
 		return (this.attributes.energy <= 0);
@@ -306,6 +312,11 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 	this.learn();
 	this.slice = 20;
     this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
+
+/* Preference attributes */
+    this.add_preference = function(resource) {
+        this.resource_preference.push(resource);
+    }
 	
 }
 
