@@ -160,7 +160,7 @@ var Matrix2D = function(width, height){
 	}
 }
 
-var MIN_MOVE_GAP = 20;
+var MIN_MOVE_GAP = 100;
 var AgentAttribute = function(view, lambda, speed, itg, energy, reprate) {
 	this.view_distance = view;
 	this.lambda = lambda;
@@ -186,6 +186,8 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 	this.size = 10;
 	this.attributes = attributes;
     this.resource_preference = new Array();
+    this.action = null;
+    this.target_loc = loc;
 
 	this.death_check = function(){
 		return (this.attributes.energy <= 0);
@@ -293,17 +295,19 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 
 	this.step = function() {
 		if (this.slice <= 0) {
+
+			this.step_finish();	
+			this.loc = this.target_loc;
+            this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
+			this.train(this.attributes.intelligence);
+
 			var aid = this.policy(this.loc);
 			var loc = this.actions[aid].do(this.loc,this);
 			for(var i=0;i<this.actions.length;i++){
 				this.view[i].coordinate_shift(loc.x - this.loc.x, loc.y - this.loc.y);
 			}
             this.map.get_tile(this.loc.x, this.loc.y).agent_leave_hook(this);
-			this.loc = loc;
-            this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
-
-			this.step_finish();	
-			this.train(this.attributes.intelligence);
+			this.target_loc = loc;
 		} else {
 			this.slice = this.slice - this.attributes.speed;
 		}
@@ -311,6 +315,7 @@ var Agent = function (id, loc, map, attributes, init_actions) {
 
 	this.learn();
 	this.slice = 20;
+    this.action_slice = 20;
     this.map.get_tile(this.loc.x, this.loc.y).agent_enter_hook(this);
 
 /* Preference attributes */

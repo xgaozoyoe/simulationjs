@@ -39,16 +39,20 @@ var rend_agent = function(agent){
 	/* some dumb code for rendering purpose, which should be moved out */
 	//agent.pos_x = agent.loc.x * MIN_MOVE_GAP - (agent.size-MIN_MOVE_GAP + 2)/2;
 	//agent.pos_y = agent.loc.y * MIN_MOVE_GAP - (agent.size-MIN_MOVE_GAP + 2)/2;
-	agent.pos_x = agent.loc.x * MIN_MOVE_GAP + (5 - rand_integer(9));
-	agent.pos_y = agent.loc.y * MIN_MOVE_GAP - (5 - rand_integer(9));
+    var x = agent.loc.x + ((agent.action_slice - agent.slice)* 1.0 * (agent.target_loc.x - agent.loc.x) /
+        agent.action_slice) + 0.5;
+    var y = agent.loc.y + ((agent.action_slice - agent.slice)* 1.0 * (agent.target_loc.y - agent.loc.y) /
+        agent.action_slice) + 0.5;
+	agent.pos_y = ((x + y)*1.0/2 - 3) * MIN_MOVE_GAP * 0.5 + (1 - rand_integer(3));
+	agent.pos_x = (x - y + map_size - 10)/2 * MIN_MOVE_GAP - (1 - rand_integer(3));
 }
 
 var gen_agents = function (map, num) {
 	var agents = [];
 	var i = 0;
 	for (var i = 0; i<num; i++) {
-		var pos = new coordinate(5 + rand_integer(25), 5 + rand_integer(25), map);
-		var attributes = new AgentAttribute(2, 0.8, rand_integer(10)+1, rand_integer(4)+1, 20 , 3);
+		var pos = new coordinate(rand_integer(map_size), rand_integer(map_size), map);
+		var attributes = new AgentAttribute(2, 0.8, rand_integer(3)+1, rand_integer(4)+1, 20 , 3);
 		agents[i] = new Agent(i, pos, map, attributes, normal_actions);
         agents[i].add_preference(ResourceCategory.RESOURCE_VEG);
         rend_agent(agents[i]);
@@ -83,8 +87,9 @@ function reproduce(mother, init_actions)
 
 var app = angular.module('myApp', []);
 
+var map_size = 20;
 // Create a map of 20 * 20
-var map = gen_map(30,30);
+var map = gen_map(map_size, map_size);
 
 
 var total_agents = 10;
@@ -148,15 +153,28 @@ app.controller('ctrl', function($scope,$interval) {
 		    return "00" + char + "00";
         }
 	}
-	$scope.gen_id_color = function gen_gray_color(val) {
-        if (val > 1000){
-		    var char = ((val - 1000)).toString(16);
-            return "ff2342";
-        }else{
-		    var char = ((val)).toString(16);
-            return "22f345"
+	$scope.gen_tile_image = function gen_gray_color(val) {
+        if (val.resource[0].resource_type == ResourceCategory.RESOURCE_WATER) {
+		    return "url(./nova/png/beach.png)";
+        } else {
+		    return "url(./nova/png/grass.png)";
         }
 	}
+
+	$scope.gen_id_image = function(val) {
+        if (val > 1000){
+            return "url(./monsters/pred-monster-1.png)";
+        }else{
+            return "url(./monsters/spiky-monster.png)";
+        }
+	}
+    $scope.grid_size = MIN_MOVE_GAP;
+    $scope.grid_top = function(x,y) {
+        return ((x + y)*1.0/2 - 3) * (this.grid_size * 0.5);
+    }
+    $scope.grid_left = function(x,y) {
+        return ((x - y + map_size - 10)/2) * this.grid_size;
+    }
 
     $scope.world = world;
 });

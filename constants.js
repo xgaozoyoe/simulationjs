@@ -148,7 +148,7 @@ var np_stay = function(loc, agent){
     /* Consume resource if this tile's resource is in the agents's preference list */
     if(res) {
         agent.attributes.energy += res.consume(4);
-        agent.slice = 2;
+        agent.slice = 10;
     }
 	return loc;
 }
@@ -159,7 +159,7 @@ var try_np_stay = function(loc, agent){
 
 
 var p_stay = function(loc, agent){
-    agent.slice = 4;
+    agent.slice = 30 ;
     agent.attributes.energy -= 1;
 	return loc;
 }

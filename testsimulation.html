@@ -18,57 +18,49 @@
 	
 
 <body>
-<header class="navbar navbar-static-top" style="border-bottom:1px solid gray">
-	<div class="container">
-		<h1>survive playground</h1>
-	</div>
-</header>
-
-
-<div ng-app="myApp" ng-controller="ctrl" style="width:1028px;margin:auto">
-	<div class="col-md-8">
-
-        <div style="font-size:20px">
-            <span>Alience will land in next {{world.next_wave_count}} seconds</span>
-            <div style="background-color:black;width:{{world.next_wave_count/2}}px;height:10px;">
-            </div>
-        </div>
-        <div style="border-bottom:1px solid gray;
-                margin-bottom:10px;
-                padding:10px;font-size:20px">
-                <span class="glyphicon glyphicon-play" ng-click="start()"></span>
-		        <span class="glyphicon glyphicon-pause" ng-click="end()"></span>
-		        <span class="glyphicon glyphicon-eye-open" ng-click="learn()"></span>
-		        <span class="glyphicon glyphicon-step-forward" ng-click="step()"></span>	
-        </div>
-
-        <div style="position:absolute;">
+<div ng-app="myApp" ng-controller="ctrl" style="width:1024px;height:768px;overflow:hidden;background-color:black">
+    <div style="position:absolute;width:1024px;height:768px;overflow:hidden;">
 		<div ng-repeat="tile in map.tiles"
 			style="position:absolute;
-			  left:{{tile.loc.x * 20}}px;
-			  top:{{tile.loc.y * 20}}px;
+			  left:{{grid_left(tile.loc.x,tile.loc.y)}}px;
+			  top:{{grid_top(tile.loc.x, tile.loc.y)}}px;
 			  display:blocked;
-			  width:20px;text-align:center;
+			  width:{{grid_size - 1}}px;text-align:center;
               border:1 px solid yellow;
-			  height:20px;background-color:#{{gen_gray_color(tile)}}">
-              {{tile.resource[0].resource_volumn}}
+			  height:{{grid_size * 0.65}}px;
+              background-image:{{gen_tile_image(tile)}}"
+              background-color:#{{gen_gray_color(tile)}}">
 		</div>
-	
 		<div ng-repeat="agent in agents"
 			ng-click="focus_agent(agent)"
 			style="position:absolute;
 			  top:{{agent.pos_y}}px;
 			  left:{{agent.pos_x}}px;
 			  display:blocked; text-align:center;
-			  width:{{agent.size}}px;
-              background-color:#{{gen_id_color(agent.id)}};
-			  height:{{agent.size}}px;border:2px solid black;
+			  width:{{grid_size/4}}px;
+              background-size:100% 100%;
+              background-image:{{gen_id_image(agent.id)}};
+			  height:{{grid_size/4}}px;
 			  ">
 		</div>
-        </div>
+    </div>
 
+
+	<div style="position:absolute;left:20px;width:424px;top:650px;background-color:white;
+        background-color:white;border:4px solid gray;border-radius:15px;overflow:hidden;">
+        <div style="display:block;position:absolute;
+            background-color:blue;opacity:0.5;width:{{world.next_wave_count/2}}px;height:100%;">
+        </div>
+        <div style="font-size:14px;padding:5px;">
+            <span>Alience will land in next {{world.next_wave_count}} seconds</span>
+            <span class="glyphicon glyphicon-play" ng-click="start()"></span>
+		    <span class="glyphicon glyphicon-pause" ng-click="end()"></span>
+		    <span class="glyphicon glyphicon-eye-open" ng-click="learn()"></span>
+		    <span class="glyphicon glyphicon-step-forward" ng-click="step()"></span>	
+        </div>
 	</div>
-	<div class="col-md-4">
+	<div style="font-size:10px;position:absolute;width:200px;top:20px;left:784px;height:600px;overflow:hidden;
+        background-color:white;border:4px solid gray;border-radius:15px;">
         <ul id="rightTab" class="nav nav-tabs">
 	        <li class="active">
                 <a href="#control" data-toggle="tab"> control panel</a>
