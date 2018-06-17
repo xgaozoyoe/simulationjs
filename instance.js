@@ -20,6 +20,7 @@ function coordinate(x, y, map) {
 
 function Tile(loc) {
 	this.loc = loc;
+    this.type = 0;
 	this.resource = new Array();
     this.agents = new Array();
     this.agent_enter_hook = function(agent){
@@ -60,6 +61,9 @@ function Tile(loc) {
     }
     this.add_resource = function(resource) {
         this.resource.push(resource);
+    }
+    this.set_type = function(type){
+        this.type = type;
     }
 }
 
@@ -102,6 +106,14 @@ function map(width, height) {
 	this.get_tile = function(x,y){
 		return this.tiles[y*width + x];
 	}
+
+    this.get_tile_option = function(x,y) {
+        if(x>=0 && x <= this.width && y>=0 && y< this.height) {
+            return this.get_tile(x,y);
+        } else {
+            return null;
+        }
+    }
 }
 
 

@@ -6,11 +6,19 @@ var ActionCategory = {
     ACTION_HUNT:5
 }
 
+var TileCategory = {
+    TILE_SOIL:1,
+    TILE_RIVER:2,
+    TILE_SAND:3,
+}
+
+
 var ResourceCategory = {
     RESOURCE_VEG:1,
     RESOURCE_SOIL:2,
     RESOURCE_WATER:3,
-    RESOURCE_JUNK:4,
+    RESOURCE_SAND:4,
+    RESOURCE_JUNK:5,
 }
 
 var ResourceVeg = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
@@ -42,34 +50,6 @@ var ResourceVeg = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
         }
     }
 }
-
-var ResourceWater = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
-    this.resource_type = ResourceCategory.RESOURCE_WATER;
-    this.regen_rate = reg_rate;
-    this.regen_volumn = reg_volumn;
-    this.max_volumn = max_volumn;
-    this.resource_volumn = start_volumn;
-    this.slice = 0;
-   	this.regenerate = function() {
-		if (this.slice == this.reg_rate){
-			this.slice = 0;
-			this.resource_volumn += this.regen_volumn;
-		}else{
-			this.slice += 1;
-		}
-	}
-    this.consume = function (volumn) {
-        if(this.resource_volumn >= volumn) {
-            this.resource_volumn -= volumn;
-            return volumn;
-        } else {
-            var c = this.resource_volumn;
-            this.resource_volumn = 0;
-            return c;
-        }
-    }
-}
-
 
 /* Action is defined by triple functions (act * attempt * gain) */
 var Action = function(name, category, act, attempt, gain){

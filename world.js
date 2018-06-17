@@ -15,20 +15,25 @@ world.birth = function(agent){
     this.agents.push(agent);
 }
 
-var gen_resource = function() {
-    var c = rand_integer(4);
-    if (c <=2) {
-        return (new ResourceVeg(rand_integer(150)+150, 3, 15, 10));
+var gen_resource = function(tile) {
+    var c = rand_integer(10);
+    if (c <=5) {
+        tile.set_type(TileCategory.TILE_SOIL);
+        tile.add_resource(new ResourceVeg(rand_integer(150)+150, 3, 15, 10));
     } else {
-        return (new ResourceWater(rand_integer(150)+150, 3, 15, 10));
+        tile.set_type(TileCategory.TILE_SAND);
     }
 }
 
 var gen_map = function (width, height) {
 	var m = new map(width, height);
+    gen_river(m);
 	for (var i=0; i<width; i++) {
 		for (var j=0; j<height; j++) {
-			m.get_tile(i,j).add_resource(gen_resource());
+            var tile = m.get_tile(i,j);
+            if (tile.type == 0) {
+                gen_resource(tile);
+            }
 		}
 	}
 	return m;
@@ -37,10 +42,8 @@ var gen_map = function (width, height) {
 /* Draw agent */
 var rend_agent = function(agent){
 	/* some dumb code for rendering purpose, which should be moved out */
-	//agent.pos_x = agent.loc.x * MIN_MOVE_GAP - (agent.size-MIN_MOVE_GAP + 2)/2;
-	//agent.pos_y = agent.loc.y * MIN_MOVE_GAP - (agent.size-MIN_MOVE_GAP + 2)/2;
     var x = agent.loc.x + ((agent.action_slice - agent.slice)* 1.0 * (agent.target_loc.x - agent.loc.x) /
-        agent.action_slice) + 0.5;
+         agent.action_slice) + 0.5;
     var y = agent.loc.y + ((agent.action_slice - agent.slice)* 1.0 * (agent.target_loc.y - agent.loc.y) /
         agent.action_slice) + 0.5;
 	agent.pos_y = ((x + y)*1.0/2 - 3) * MIN_MOVE_GAP * 0.5 + (1 - rand_integer(3));
@@ -144,17 +147,90 @@ app.controller('ctrl', function($scope,$interval) {
 	$scope.step = function(){
 		$scope.focus.step();
 	}
-	$scope.gen_gray_color = function gen_gray_color(val) {
-        if (val.resource[0].resource_type == ResourceCategory.RESOURCE_WATER) {
-		    var char = (0xff - val.resource[0].resource_volumn).toString(16);
-		    return "0000" + char;
-        } else {
-		    var char = (0xff - val.resource[0].resource_volumn).toString(16);
-		    return "00" + char + "00";
-        }
-	}
-	$scope.gen_tile_image = function gen_gray_color(val) {
-        if (val.resource[0].resource_type == ResourceCategory.RESOURCE_WATER) {
+    $scope.gen_resource_img = function(val) {
+        return "./nova/png/coniferAltShort.png";
+    }
+    $scope.gen_resource_sz = function(val) {
+        return val.resource_volumn * 3;
+    }
+	$scope.gen_tile_image = function(val) {
+        if (val.type == TileCategory.TILE_RIVER) {
+            var east = map.get_tile_option(val.loc.x, val.loc.y-1);
+            var south = map.get_tile_option(val.loc.x+1, val.loc.y);
+            var west = map.get_tile_option(val.loc.x, val.loc.y+1);
+            var north = map.get_tile_option(val.loc.x-1, val.loc.y);
+            var adj = [];
+            adj[0]=east;
+            adj[1]=south;
+            adj[2]=west;
+            adj[3]=north;
+            var adjwater = 0;
+            for(var i=0;i<4;i++){
+                if(adj[i] && adj[i].type == TileCategory.TILE_RIVER) {
+                    adjwater += 1;
+                }
+            }
+            if (adjwater == 0) { // flat water pool
+		        return "url(./nova/png/water.png)";
+            }
+            if (adjwater == 1) { // flat water pool
+                if (east && east.type == TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/riverEW.png)";
+                }
+                if (south && south.type == TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/riverNS.png)";
+                }
+                if (west && west.type == TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/riverEW.png)";
+                }
+                if (north && north.type == TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/riverNS.png)";
+                }
+            }
+            if (adjwater == 2) { // flat water pool
+                if (east && east.type == TileCategory.TILE_RIVER) {
+                    if (south && south.type == TileCategory.TILE_RIVER) {
+		                return "url(./nova/png/riverES.png)";
+                    }
+                    if (north && north.type == TileCategory.TILE_RIVER) {
+		                return "url(./nova/png/riverNE.png)";
+                    }
+		            return "url(./nova/png/riverEW.png)";
+                }
+                if (west && west.type == TileCategory.TILE_RIVER) {
+                    if (south && south.type == TileCategory.TILE_RIVER) {
+		                return "url(./nova/png/riverSW.png)";
+                    }
+                    if (north && north.type == TileCategory.TILE_RIVER) {
+		                return "url(./nova/png/riverNW.png)";
+                    }
+                }
+                if (west && west.type == TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/riverEW.png)";
+                } else{
+		            return "url(./nova/png/riverNS.png)";
+                }
+            }
+            if (adjwater == 3) { // flat water pool
+                if (east && east.type != TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/waterE.png)";
+                }
+                if (west && west.type != TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/waterW.png)";
+                }
+                if (south && south.type != TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/waterS.png)";
+                }
+                if (north && north.type != TileCategory.TILE_RIVER) {
+		            return "url(./nova/png/waterN.png)";
+                }
+            }
+            if (adjwater == 4) { // flat water pool
+		        return "url(./nova/png/water.png)";
+            }
+		    return "url(./nova/png/beach.png)";
+
+        } else if (val.type == TileCategory.TILE_SAND) {
 		    return "url(./nova/png/beach.png)";
         } else {
 		    return "url(./nova/png/grass.png)";
