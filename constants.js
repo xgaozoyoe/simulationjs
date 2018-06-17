@@ -157,7 +157,11 @@ var hunt = function(loc, agent){
     var tile = loc.map.get_tile(loc.x, loc.y);
     for(var i = 0; i<tile.agents.length; i++) {
         if(tile.agents[i].id < 1000) {
-            agent.attributes.energy += tile.agents[i].attributes.energy;
+            var target_energy = agent.attributes.energy + tile.agents[i].attributes.energy;
+            if (target_energy > 150) {
+                target_energy = 150;
+            }
+            agent.attributes.energy = target_energy;
             tile.agents[i].attributes.energy = 0;
             tile.agent_leave_hook(tile.agents[i]);
             return loc;
@@ -203,7 +207,7 @@ var map_gain = function (map, loc, action, caster) {
             }
 		}
         if (action.category == ActionCategory.ACTION_HUNT) {
-            if (caster.attributes.energy > 30) {
+            if (caster.attributes.energy > 150) {
                 return 0;
             }
             var tile = loc.map.get_tile(loc.x, loc.y);

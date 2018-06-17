@@ -79,6 +79,7 @@ function reproduce(mother, init_actions)
 			20, mother.attributes.reproduce_rate); // 20 energy for a new baby might be too much ?
 
         	birth = new Agent(mother.id, loc, mother.map, attributes, init_actions);
+			birth.resource_preference = mother.resource_preference;
             global_env().birth(birth);
             mother.attributes.slice += 100;
         }
