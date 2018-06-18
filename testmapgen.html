@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+<script src="http://cdn.static.runoob.com/libs/jquery/2.1.1/jquery.min.js"></script>
+<script src="http://cdn.static.runoob.com/libs/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="http://cdn.static.runoob.com/libs/angular.js/1.4.6/angular.min.js"></script>
+<script src="utils.js"></script>
+<script src="constants.js"></script>
+<script src="instance.js"></script>
+<script src="mapgen.js"></script>
+<script src="mapgentest.js"></script>
+</head>
+<body>
+<div ng-app="myApp" ng-controller="ctrl">
+    <button ng-click="debug()">play</button>
+    <button ng-click="step()">step</button>
+    <button ng-click="end()">pause</button>
+    <div style="position:relative;height:{{grid_size * map.height}}px"> 
+        <div ng-repeat="tile in map.tiles"
+            style="position:absolute;
+            left:{{tile.loc.x * grid_size}}px;
+            top:{{tile.loc.y * grid_size}}px;
+            display:blocked;
+            width:{{grid_size}}px;text-align:center;
+            border:1px solid black;
+            height:{{grid_size}}px;">
+	    {{tile.index}}
+        </div>
+    </div>
+    </br>
+    <div style="height:{{grid_size * map.height}}px;position:relative">
+        <div ng-repeat="nodes in solutions.nodes">
+          <div ng-repeat="node in nodes"
+            style="position:absolute;
+            left:{{node.loc.x * grid_size}}px;
+            top:{{node.loc.y * grid_size}}px;
+            display:blocked;
+            width:{{grid_size}}px;text-align:center;
+            border:1px solid black;
+            height:{{grid_size}}px;"> {{node.index}}
+          </div>
+        </div>
+    </div>
+    </br>
+    <div>
+     {{solutions.result.length}} ways
+    </div>
+    </br>
+    <div style="position:relative;height:{{grid_size * map.height}}px"> 
+        <div ng-repeat="tile in map.tiles"
+            style="position:absolute;
+            left:{{tile.loc.x * grid_size}}px;
+            top:{{tile.loc.y * grid_size}}px;
+            display:blocked;
+            width:{{grid_size}}px;text-align:center;
+            border:1px solid black;
+            height:{{grid_size}}px;">
+            {{tile.searched}},{{tile.index}}
+        </div>
+    </div>
+</body>
+</html>
