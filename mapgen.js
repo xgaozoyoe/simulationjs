@@ -1,5 +1,5 @@
 /*  
-    dfs : The standard dep
+    dfs : The standard depth search algorithm
     fn_get_actions : state -> Array (step: state -> state, roll_back: state->state) : get all the actions and put them into the 
     fn_record_success : state -> void : record the successful state
     fn_success : sate-> bool : check wheter a state is a successful state

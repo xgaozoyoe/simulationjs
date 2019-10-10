@@ -1,0 +1,80 @@
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+<script src="logic.js"></script>
+<link rel="stylesheet" href="styles.css"></link>
+</head>
+<body>
+  <div ng-app="game-world" ng-controller="game-world-control">
+  <div class="city">
+    <div class="warriers">
+      <div class="knight-home pin"
+        droppable="game_world.knight">
+        <!-- knight -->
+        knight
+      </div>
+      <div class="archer-home pin">
+        <!-- archer -->
+        archer
+      </div>
+      <div class="bm-home pin">
+        <!-- beastmaster -->
+        beastmaster
+      </div>
+      <div class="wizzard-home pin">
+        <!-- wizzard -->
+      </div>
+      <div class="commander-home pin">
+        <!-- commander -->
+        commander
+      </div>
+    </div>
+
+    <div class="farm">
+      <div class="meat asset">
+        <div ng-repeat="cow in game_world.meat_farm.current"
+            class="asset-icon" draggable="cow">
+        </div>
+        <div class="progress"><div ng-click="game_world.meat_farm.harvest()"
+          ng-style="{'width':game_world.meat_farm.charge + '%'}">
+        </div></div>
+      </div>
+      <div class="veg asset">
+        <div ng-repeat="cow in game_world.veg_farm.current"
+            class="asset-icon" draggable="veg">
+        </div>
+        <div class="progress"><div ng-click="game_world.veg_farm.harvest()"
+          ng-style="{'width':game_world.veg_farm.charge + '%'}">
+        </div></div>
+      </div>
+      <div class="nut asset">
+        <div ng-repeat="nut in game_world.nut_farm.current"
+            class="asset-icon" draggable="nut">
+        </div>
+        <div class="progress"><div
+          ng-style="{'width':game_world.veg_farm.charge + '%'}">
+        </div></div>
+      </div>
+
+      <div class="fruit asset">
+        <div ng-repeat="fruit in game_world.fruit_farm.current"
+            class="asset-icon" draggable="fruit">
+        </div>
+        <div class="progress"><div ng-click="game_world.fruit_farm.harvest()"
+          ng-style="{'width':game_world.fruit_farm.charge + '%'}">
+        </div></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="dragon-home">
+    <img src="./art/dragon.png" class="dragon"/>
+    <div class="progress-inner"><div
+          ng-style="{'width':game_world.veg_farm.charge + '%'}">
+    </div></div>
+    </div>
+  </div>
+  </div>
+</body>
+
+</html>

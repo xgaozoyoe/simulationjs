@@ -1,8 +1,8 @@
 var ActionCategory = {
-	ACTION_MOVE:1,
-	ACTION_AFFEND:2,
-	ACTION_DEFEND:3,
-	ACTION_COLLECT:4,
+    ACTION_MOVE:1,
+    ACTION_AFFEND:2,
+    ACTION_DEFEND:3,
+    ACTION_COLLECT:4,
     ACTION_HUNT:5
 }
 
@@ -28,17 +28,17 @@ var ResourceVeg = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
     this.max_volumn = max_volumn;
     this.resource_volumn = start_volumn;
     this.slice = 0;
-   	this.regenerate = function() {
-		if (this.slice == this.regen_rate){
-			this.slice = 0;
-			this.resource_volumn += this.regen_volumn;
+       this.regenerate = function() {
+        if (this.slice == this.regen_rate){
+            this.slice = 0;
+            this.resource_volumn += this.regen_volumn;
             if (this.resource_volumn >= this.max_volumn) {
                 this.resource_volumn = this.max_volumn;
             }
-		}else{
-			this.slice += 1;
-		}
-	}
+        }else{
+            this.slice += 1;
+        }
+    }
     this.consume = function (volumn) {
         if(this.resource_volumn >= volumn) {
             this.resource_volumn -= volumn;
@@ -54,7 +54,7 @@ var ResourceVeg = function(reg_rate,reg_volumn, max_volumn, start_volumn) {
 /* Action is defined by triple functions (act * attempt * gain) */
 var Action = function(name, category, act, attempt, gain){
     this.name = name;
-	this.category = category;
+    this.category = category;
     this.do = act;
     this.attempt = attempt;
     this.gain = gain;
@@ -63,42 +63,42 @@ var Action = function(name, category, act, attempt, gain){
 /* Standard movement action functor */
 var move = function(direction) {
     var fn = function (loc, agent) {
-		var attempt_loc = direction(loc);
+        var attempt_loc = direction(loc);
         agent.slice += 10;
         agent.attributes.energy -=1;
-		if (loc.map.offset(attempt_loc, 0, 0) != null) {
-			return attempt_loc;
-		} else {
-			return loc;
-		}
-	}
-	return fn;
+        if (loc.map.offset(attempt_loc, 0, 0) != null) {
+            return attempt_loc;
+        } else {
+            return loc;
+        }
+    }
+    return fn;
 }
 
 var try_move = function(direction) {
     var fn = function (loc, agent) {
-		var attempt_loc = direction(loc);
-		if (loc.map.offset(attempt_loc, 0, 0) != null) {
-			return attempt_loc;
-		} else {
-			return null;
-		}
-	}
-	return fn;
+        var attempt_loc = direction(loc);
+        if (loc.map.offset(attempt_loc, 0, 0) != null) {
+            return attempt_loc;
+        } else {
+            return null;
+        }
+    }
+    return fn;
 }
 
 var gain_move = function (map, loc, action, caster) {
-	if (loc != null) {
-		if (action.category == ActionCategory.ACTION_MOVE) {
-			return 0;
-		}
-		if (action.category == ActionCategory.ACTION_COLLECT) {
+    if (loc != null) {
+        if (action.category == ActionCategory.ACTION_MOVE) {
+            return 0;
+        }
+        if (action.category == ActionCategory.ACTION_COLLECT) {
             if (caster.id < 1000) {
-			return map.get_tile_resource(loc.x, loc.y);
+            return map.get_tile_resource(loc.x, loc.y);
             }else{
                 return 0;
             }
-		}
+        }
         if (action.category == ActionCategory.ACTION_HUNT) {
             if (caster.attributes.energy > 30) {
                 return 0;
@@ -116,36 +116,36 @@ var gain_move = function (map, loc, action, caster) {
                 return 0;
             }
         }
-		console.error("unsupported action!");
-	} else {
-		return -1;
-	}
+        console.error("unsupported action!");
+    } else {
+        return -1;
+    }
 }
 
 var np_stay = function(loc, agent){
-	var map = loc.map;
+    var map = loc.map;
     var res = map.get_tile(agent.loc.x, agent.loc.y).get_resource_by_type(agent.resource_preference);
     /* Consume resource if this tile's resource is in the agents's preference list */
     if(res) {
         agent.attributes.energy += res.consume(4);
         agent.slice = 10;
     }
-	return loc;
+    return loc;
 }
 
 var try_np_stay = function(loc, agent){
-	return loc;
+    return loc;
 }
 
 
 var p_stay = function(loc, agent){
     agent.slice = 30 ;
     agent.attributes.energy -= 1;
-	return loc;
+    return loc;
 }
 
 var try_p_stay = function(loc, agent){
-	return loc;
+    return loc;
 }
 
 
@@ -190,22 +190,22 @@ var normal_actions = [non_predator_stay, move_left, move_right, move_top, move_b
 var predator_actions = [predator_stay, move_left, move_right, move_top, move_bottom, hunt];
 
 var map_gain = function (map, loc, action, caster) {
-	if (loc != null) {
-		if (action.category == ActionCategory.ACTION_MOVE) {
-			return 0;
-		}
-		if (action.category == ActionCategory.ACTION_COLLECT) {
+    if (loc != null) {
+        if (action.category == ActionCategory.ACTION_MOVE) {
+            return 0;
+        }
+        if (action.category == ActionCategory.ACTION_COLLECT) {
             if (caster.id < 1000) {
                 var res = map.get_tile(loc.x, loc.y).get_resource_by_type(caster.resource_preference);
                 if (res) {
-			        return res.resource_volumn;
+                    return res.resource_volumn;
                 } else {
                     return 0;
                 }
             }else{
                 return 0;
             }
-		}
+        }
         if (action.category == ActionCategory.ACTION_HUNT) {
             if (caster.attributes.energy > 150) {
                 return 0;
@@ -223,8 +223,8 @@ var map_gain = function (map, loc, action, caster) {
                 return 0;
             }
         }
-		console.error("unsupported action!");
-	} else {
-		return -1;
-	}
+        console.error("unsupported action!");
+    } else {
+        return -1;
+    }
 }

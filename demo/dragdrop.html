@@ -1,0 +1,53 @@
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+
+<script src="../utils.js"></script>
+<script src="../universe.js"></script>
+<script src="../frontend/angular-support.js"></script>
+<script>
+  var universe = new Universe();
+  var app = angular.module('dragdrop',[]);
+  var cells = new Array();
+  var cellA = {attr:"drag me"};
+  var containers = new Array();
+  var containerA = {attr:"drop something here"};
+  cells.push(universe.buildAgent(cellA));
+  containers.push(universe.buildAgent(containerA));
+  containerA.addEventHandler('UI_DROP',function(e) {
+      alert(e.getEventObject().attr);
+  });
+  app.controller('dragdrop-ctrl', function($scope,$interval) {
+    $interval(universe.step, 1000);
+    $scope.cells = cells;
+    $scope.containers = containers;
+  });
+  initialize_dragdrop_directive(app,universe);
+</script>
+<style>
+.drag-me {
+  float:left;
+  width:200px;
+  border:1px solid black;
+}
+.drop-here {
+  float:right;
+  width:400px;
+  border:1px solid black;
+}
+</style>
+</head>
+<body>
+  <div ng-app="dragdrop" ng-controller="dragdrop-ctrl">
+    <div ng-repeat="cell in cells"
+            class="drag-me" draggable="cell">
+        {{cell.attr}}
+    </div>
+    <div ng-repeat="container in containers"
+            class="drop-here" droppable="container">
+        {{container.attr}}
+    </div>
+  </div>
+</body>
+
+</html>
